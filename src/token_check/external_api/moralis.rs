@@ -2,8 +2,6 @@ use std::fmt::Debug;
 
 use anyhow::anyhow;
 use ethers::types::{Chain, U256};
-use log::warn;
-use reqwest::Error;
 use serde::{de::DeserializeOwned, Deserialize};
 
 use crate::{

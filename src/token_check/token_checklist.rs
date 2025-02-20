@@ -4,11 +4,9 @@ use super::token_holder_check::get_token_holder_check;
 use super::token_liquidity_check::get_percentage_liquidity_locked_or_burned;
 use crate::app_config::AI_MODEL;
 use crate::data::token_data::ERC20Token;
-use crate::token_check::ai::ai_submission::{check_code_with_ai, AIModel};
-use crate::token_check::external_api::etherscan_api::{
-    get_contract_owner, get_source_code, get_token_info, TokenWebData,
-};
-use crate::token_check::token_holder_check::{self, TokenHolderCheck};
+use crate::token_check::ai::ai_submission::check_code_with_ai;
+use crate::token_check::external_api::etherscan_api::{get_source_code, TokenWebData};
+use crate::token_check::token_holder_check::TokenHolderCheck;
 use crate::utils::type_conversion::address_to_string;
 use ethers::providers::{Provider, Ws};
 use std::sync::Arc;

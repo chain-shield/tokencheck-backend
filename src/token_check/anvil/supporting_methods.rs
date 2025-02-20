@@ -97,17 +97,6 @@ impl AnvilTestSimulator {
 
         Ok(())
     }
-    // pub async fn get_weth_balance(&self) -> anyhow::Result<U256> {
-    //     let weth_address: Address = CONTRACT.get_address().weth.parse()?;
-    //     // get account balance to see how much of new token recieved
-    //     let token_contract = ERC20::new(weth_address, self.signed_client.clone());
-    //
-    //     let new_token_balance_u256 = token_contract.balance_of(self.sender).call().await?;
-    //     let token_balance = format_units(new_token_balance_u256, u32::from(18u32))?;
-    //
-    //     println!("YOU HAVE {} of WETH", token_balance);
-    //     Ok(new_token_balance_u256)
-    // }
 }
 
 pub fn find_revert(trace: &CallFrame) -> Option<&CallFrame> {

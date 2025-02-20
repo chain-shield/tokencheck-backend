@@ -1,6 +1,5 @@
 use crate::abi::erc20::ERC20;
 use crate::abi::uniswap_router_v2::UNISWAP_V2_ROUTER;
-use crate::app_config::{AppMode, APP_MODE};
 use crate::data::contracts::CONTRACT;
 use crate::data::token_data::ERC20Token;
 use crate::token_check::anvil::tx_trait::Txs;

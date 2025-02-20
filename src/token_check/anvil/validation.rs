@@ -4,7 +4,7 @@ use crate::token_check::anvil::simlator::AnvilTestSimulator;
 use crate::token_check::anvil::tx_trait::Txs;
 use ethers::providers::Middleware;
 use ethers::types::{Transaction, U256};
-use log::{error, info, warn};
+use log::error;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum TokenStatus {

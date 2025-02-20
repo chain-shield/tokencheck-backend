@@ -6,13 +6,13 @@ use reqwest::{Client, Response};
 use serde::de::DeserializeOwned;
 
 use crate::{
-    app_config::{CODE_CHECK_PROMPT, FINAL_DETERMINATION_PROMPT, WEBSITE_CHECK_PROMPT},
+    app_config::{CODE_CHECK_PROMPT, WEBSITE_CHECK_PROMPT},
     utils::type_conversion::truncate_code_unicode,
 };
 
 use super::ai_structs::{
     AiChatCompletion, AiErrorResponse, ChatCompletionRequest, HasContent, MessageToSend,
-    PromptType, TokenCodeCheck, TokenFinalAssessment, TokenWebsiteCheck,
+    PromptType, TokenCodeCheck, TokenWebsiteCheck,
 };
 
 use crate::token_check::{

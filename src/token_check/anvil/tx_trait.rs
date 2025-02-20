@@ -82,18 +82,6 @@ pub trait Txs {
     }
 }
 
-// impl Txs for AnvilSimulator {
-//     fn signed_client(&self) -> Arc<SignerMiddleware<Provider<Ws>, Wallet<SigningKey>>> {
-//         self.signed_client.clone()
-//     }
-//     fn client(&self) -> Arc<Provider<Ws>> {
-//         self.client.clone()
-//     }
-//     fn sender(&self) -> Address {
-//         self.sender
-//     }
-// }
-
 impl Txs for AnvilTestSimulator {
     fn signed_client(&self) -> Arc<SignerMiddleware<Provider<Ws>, Wallet<SigningKey>>> {
         self.signed_client.clone()
@@ -105,15 +93,3 @@ impl Txs for AnvilTestSimulator {
         self.sender
     }
 }
-
-// impl Txs for TxWallet {
-//     fn signed_client(&self) -> Arc<SignerMiddleware<Provider<Ws>, Wallet<SigningKey>>> {
-//         self.signed_client.clone()
-//     }
-//     fn client(&self) -> Arc<Provider<Ws>> {
-//         self.client.clone()
-//     }
-//     fn sender(&self) -> Address {
-//         self.sender
-//     }
-// }

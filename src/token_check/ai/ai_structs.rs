@@ -94,12 +94,12 @@ pub struct TokenWebsiteCheck {
     pub summary: String,
 }
 
-#[derive(Deserialize, Clone, Debug)]
-pub struct TokenFinalAssessment {
-    pub final_scam_assessment: bool,
-    pub reason: String,
-    pub could_legitimately_justify_suspicious_code: bool,
-}
+// #[derive(Deserialize, Clone, Debug)]
+// pub struct TokenFinalAssessment {
+//     pub final_scam_assessment: bool,
+//     pub reason: String,
+//     pub could_legitimately_justify_suspicious_code: bool,
+// }
 
 /// Error response
 #[derive(Deserialize, Debug)]

@@ -1,5 +1,5 @@
 use ethers::providers::{Provider, Ws};
-use ethers::types::{Address, U256};
+use ethers::types::U256;
 use std::sync::Arc;
 
 use crate::abi::erc20::ERC20;

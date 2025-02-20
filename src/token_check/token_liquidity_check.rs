@@ -3,12 +3,10 @@ use ethers::prelude::*;
 use std::sync::Arc;
 
 use crate::{
-    app_config::{API_CHECK_LIMIT, CHAIN, TOKEN_LOCKERS_BASE, TOKEN_LOCKERS_MAINNET},
+    app_config::{CHAIN, TOKEN_LOCKERS_BASE, TOKEN_LOCKERS_MAINNET},
     token_check::{
         check_token_lock::TokenHolders,
-        external_api::{
-            etherscan_api::get_token_holder_list, thegraph_api::fetch_uniswap_lp_holders,
-        },
+        external_api::thegraph_api::fetch_uniswap_lp_holders,
         {external_api::moralis, token_holder_check::u256_div_u256_to_f64},
     },
     utils::type_conversion::address_to_string,

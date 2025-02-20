@@ -76,8 +76,6 @@ impl AnvilTestSimulator {
             sender: from_address,
         };
 
-        // simulator.prepare_account().await?;
-
         Ok(simulator)
     }
 }
