@@ -1,3 +1,6 @@
+//! ChainShield TokenCheck Backend Library.
+//! This library provides modules for ABI interactions, data management, token checking, logging, and various utilities.
+
 pub mod abi {
     pub mod erc20;
     pub mod uniswap_factory_v2;
