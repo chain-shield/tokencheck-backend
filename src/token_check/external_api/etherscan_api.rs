@@ -1,3 +1,10 @@
+//! This module provides asynchronous functions to interact with the Etherscan API.
+//!
+//! It enables fetching token holder lists, contract source code, contract owner information,
+//! and token information. The module uses `reqwest` for HTTP requests and `serde` for JSON deserialization.
+//!
+//! Make sure to set the environment variables `ETHERSCAN_API_KEY` and `ETHERSCAN_API` before using these functions.
+
 use anyhow::{anyhow, Result};
 use ethers::types::{Address, U256};
 use log::warn;
@@ -11,7 +18,12 @@ use crate::{
 
 use crate::token_check::check_token_lock::TokenHolders;
 
-/// Internal structs mirroring Etherscan's JSON structure
+/// Represents the generic response from the Etherscan API.
+///
+/// The API response is expected to contain:
+/// - `status`: a string indicating the status (usually "1" for success),
+/// - `message`: a message from the API,
+/// - `result`: a vector containing the actual data, which is generic.
 #[derive(Debug, Deserialize)]
 pub struct EtherscanResponse<T> {
     status: String,
@@ -19,6 +31,9 @@ pub struct EtherscanResponse<T> {
     result: Vec<T>,
 }
 
+/// Contains contract creation information as returned by Etherscan.
+///
+/// Note that most fields are prefixed with an underscore as they may not be used.
 #[derive(Debug, Deserialize)]
 pub struct ContractOwner {
     #[serde(rename = "contractAddress")]
@@ -43,6 +58,9 @@ pub struct ContractOwner {
     _creation_byte_code: String,
 }
 
+/// Represents the contract source code information returned by Etherscan.
+///
+/// This struct mirrors the JSON structure of the source code details and is used internally.
 #[derive(Debug, Deserialize)]
 struct ContractSourceCode {
     #[serde(rename = "SourceCode")]
@@ -85,7 +103,10 @@ struct ContractSourceCode {
     _swarm_source: String,
 }
 
-/// Struct mirroring the fields returned by the "tokeninfo" action
+/// Represents the token information as returned by Etherscan.
+///
+/// This struct includes details like website, blue checkmark status,
+/// and social media handles.
 #[derive(Debug, Deserialize)]
 pub struct TokenInfo {
     #[serde(rename = "contractAddress")]
@@ -161,15 +182,9 @@ pub struct TokenInfo {
     _image: String,
 }
 
-#[derive(Debug, Deserialize)]
-struct EtherscanHolderEntry {
-    #[serde(rename = "TokenHolderAddress")]
-    token_holder_address: String,
-
-    #[serde(rename = "TokenHolderQuantity")]
-    token_holder_quantity: String,
-}
-
+/// Holds token web data extracted from the Etherscan token info.
+///
+/// This includes website URL, blue checkmark status, and social media links.
 #[derive(Debug, Clone, Default)]
 pub struct TokenWebData {
     pub blue_checkmark: bool,
@@ -180,64 +195,51 @@ pub struct TokenWebData {
     pub whitepaper: String,
 }
 
-/// Example function to call Etherscan’s “tokenholderlist” endpoint.
+/// Fetches the token holder list from the Etherscan API for a given contract address.
 ///
 /// # Arguments
 ///
-/// - `contract_address`: The ERC-20 contract address (token address).
-/// - `page`: The page number (starting from 1).
-/// - `offset`: The number of holders per page (e.g. 10, 50, etc.).
-/// - `api_key`: Your Etherscan API key.
+/// * `contract_address` - The ERC-20 token contract address.
 ///
 /// # Returns
-/// `Vec<TokenHolders>` with the holder address and quantity in `U256`.
 ///
-// const chains = [42161, 8453, 10, 534352, 81457]
-//
-// for (const chain of chains) {
-//
-//   // endpoint accepts one chain at a time, loop for all your chains
-//   const balance = fetch(`https://api.etherscan.io/v2/api?
-//      chainid=${chain}
-//      &module=account
-//      &action=balance
-//      &address=0xb5d85cbf7cb3ee0d56b3bb207d5fc4b82f43f511
-//      &tag=latest&apikey=YourApiKeyToken`)
-//
-// }
+/// A `Result` containing a vector of `TokenHolders` (with holder address and quantity in `U256`)
+/// on success, or an error if the request fails or parsing the data encounters an issue.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The HTTP request fails.
+/// - The API returns a non-success status.
+/// - The JSON response cannot be parsed correctly.
 pub async fn get_token_holder_list(contract_address: Address) -> Result<Vec<TokenHolders>> {
-    // Build Etherscan URL
-    // Example: https://api.basescan.org/api
-    //   ?module=token
-    //   &action=tokenholderlist
-    //   &contractaddress=...
-    //   &page=...
-    //   &offset=...
-    //   &apikey=...
-    //
+    // Retrieve the necessary API key and convert the contract address to a string.
     let etherscan_api_key = get_etherscan_api_key()?;
     let contract_address_str = address_to_string(contract_address);
 
+    // Get chain id from application configuration.
     let chain_id = CHAIN as u64;
     let etherscan_api = get_etherscan_api()?;
 
+    // Build the Etherscan URL for fetching token holders.
     let url = format!(
         "{}?chainid={}&module=token&action=tokenholderlist&contractaddress={}&apikey={}",
         etherscan_api, chain_id, contract_address_str, etherscan_api_key
     );
 
-    // Make HTTP GET request
+    // Create a new HTTP client and send the GET request.
     let client = Client::new();
     let resp = client.get(&url).send().await?;
 
+    // Ensure the request succeeded.
     if !resp.status().is_success() {
         return Err(anyhow!("Request failed with status: {}", resp.status()));
     }
 
-    // Parse JSON response
+    // Deserialize the JSON response into the expected structure.
     let parsed: EtherscanResponse<EtherscanHolderEntry> = resp.json().await?;
 
-    // Check Etherscan response status
+    // Verify that Etherscan returned a successful status.
     if parsed.status != "1" {
         return Err(anyhow!(
             "Etherscan returned status={}, message={}",
@@ -246,9 +248,10 @@ pub async fn get_token_holder_list(contract_address: Address) -> Result<Vec<Toke
         ));
     }
 
-    // Convert to Vec<TokenHolders>
+    // Convert the parsed JSON entries into a vector of TokenHolders.
     let mut holders = Vec::with_capacity(parsed.result.len());
     for entry in parsed.result {
+        // Parse the token quantity from decimal string to U256.
         let tokens_held = U256::from_dec_str(&entry.token_holder_quantity)?;
 
         holders.push(TokenHolders {
@@ -260,39 +263,49 @@ pub async fn get_token_holder_list(contract_address: Address) -> Result<Vec<Toke
     Ok(holders)
 }
 
+/// Fetches the source code of a contract from the Etherscan API.
+///
+/// # Arguments
+///
+/// * `contract_address` - A string slice representing the contract address.
+///
+/// # Returns
+///
+/// A `Result` containing the contract source code as a `String` on success, or an error if
+/// the request or parsing fails.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The HTTP request fails.
+/// - The API returns a non-success status.
+/// - The JSON response cannot be parsed.
 pub async fn get_source_code(contract_address: &str) -> Result<String> {
-    // Build Etherscan URL
-    // Example: https://api.basescan.org/api
-    //   ?module=token
-    //   &action=tokenholderlist
-    //   &contractaddress=...
-    //   &page=...
-    //   &offset=...
-    //   &apikey=...
-    //
     let etherscan_api_key = get_etherscan_api_key()?;
 
     let chain_id = CHAIN as u64;
     let etherscan_api = get_etherscan_api()?;
 
+    // Build the URL for fetching the contract source code.
     let url = format!(
-        "{}?chainid={}&module=contract&action=getsourcecode&
+        "{}?chainid={}&module=contract&action=getsourcecode&\
 address={}&apikey={}",
         etherscan_api, chain_id, contract_address, etherscan_api_key
     );
 
-    // Make HTTP GET request
+    // Send the HTTP GET request.
     let client = Client::new();
     let resp = client.get(&url).send().await?;
 
+    // Check if the response status is successful.
     if !resp.status().is_success() {
         return Err(anyhow!("Request failed with status: {}", resp.status()));
     }
 
-    // Parse JSON response
+    // Deserialize the JSON response.
     let parsed: EtherscanResponse<ContractSourceCode> = resp.json().await?;
 
-    // Check Etherscan response status
+    // Ensure the returned status signifies success.
     if parsed.status != "1" {
         return Err(anyhow!(
             "Etherscan returned status={}, message={}",
@@ -301,7 +314,7 @@ address={}&apikey={}",
         ));
     }
 
-    // Convert to Vec<TokenHolders>
+    // Return the source code from the first item in the result, if available.
     let source_code = match parsed.result.first() {
         Some(result) => result.source_code.clone(),
         None => String::new(),
@@ -310,37 +323,53 @@ address={}&apikey={}",
     Ok(source_code)
 }
 
+/// Retrieves the contract owner's address from the Etherscan API.
+///
+/// # Arguments
+///
+/// * `contract_address` - A string slice representing the contract address.
+///
+/// # Returns
+///
+/// A `Result` containing an `Option<String>`. On success, it returns `Some(contract_creator)` if found,
+/// or `None` if there is no contract owner information. If the HTTP request or JSON deserialization fails,
+/// then an error is returned.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The HTTP request fails.
+/// - The API returns a non-success status.
+/// - The JSON response cannot be parsed.
 pub async fn get_contract_owner(contract_address: &str) -> Result<Option<String>> {
     let etherscan_api_key = get_etherscan_api_key()?;
 
     let chain_id = CHAIN as u64;
     let etherscan_api = get_etherscan_api()?;
 
+    // Build the URL for fetching the contract owner.
     let url = format!(
-        "{}?chainid={}&module=contract&action=getcontractcreation&
+        "{}?chainid={}&module=contract&action=getcontractcreation&\
 contractaddresses={}&apikey={}",
         etherscan_api, chain_id, contract_address, etherscan_api_key
     );
 
-    // Make HTTP GET request
     let client = Client::new();
     let response = client.get(&url).send().await?;
 
+    // Ensure the response is successful.
     if !response.status().is_success() {
         return Err(anyhow!("Request failed with status: {}", response.status()));
     }
 
-    // Parse JSON response
+    // Attempt to deserialize the JSON response.
+    // On failure, log a warning and attempt to re-fetch the data.
     let parsed: EtherscanResponse<ContractOwner> = match response.json().await {
-        Ok(parsed) => {
-            // println!("parsed => {:#?}", parsed);
-            parsed
-        }
+        Ok(parsed) => parsed,
         Err(error) => {
             warn!("could not decode => {}", error);
 
-            // // TESTING >>>>>>>>>>>>>>>>
-            // sleep(Duration::from_millis(1000)).await;
+            // Retry fetching the data (this part is for testing purposes).
             let response = client.get(&url).send().await?;
             let response_text = response.text().await?;
             println!("response_text => {}", response_text);
@@ -349,7 +378,7 @@ contractaddresses={}&apikey={}",
         }
     };
 
-    // Check Etherscan response status
+    // Verify a successful status in the returned response.
     if parsed.status != "1" {
         return Err(anyhow!(
             "Etherscan returned status={}, message={}",
@@ -358,44 +387,58 @@ contractaddresses={}&apikey={}",
         ));
     }
 
-    // Convert to Vec<TokenHolders>
+    // Return the contract creator if available.
     match parsed.result.first() {
         Some(result) => Ok(Some(result.contract_creator.clone())),
         None => Ok(None),
     }
 }
 
+/// Fetches token information from the Etherscan API and converts it into `TokenWebData`.
+///
+/// # Arguments
+///
+/// * `contract_address` - A string slice representing the contract address.
+///
+/// # Returns
+///
+/// A `Result` containing an `Option<TokenWebData>` on success. If parsing or the HTTP request fails,
+/// or if no token information is found, `None` is returned (with an appropriate error logged).
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The HTTP request fails.
+/// - The API returns a non-success status.
+/// - The JSON response cannot be fully parsed.
 pub async fn get_token_info(contract_address: &str) -> Result<Option<TokenWebData>> {
     let etherscan_api_key = get_etherscan_api_key()?;
 
     let chain_id = CHAIN as u64;
     let etherscan_api = get_etherscan_api()?;
 
+    // Build the URL for fetching token info.
     let url = format!(
-        "{}?chainid={}&module=token&action=tokeninfo&
+        "{}?chainid={}&module=token&action=tokeninfo&\
 contractaddress={}&apikey={}",
         etherscan_api, chain_id, contract_address, etherscan_api_key
     );
 
-    // Make HTTP GET request
     let client = Client::new();
     let response = client.get(&url).send().await?;
 
+    // Ensure the HTTP request was successful.
     if !response.status().is_success() {
         return Err(anyhow!("Request failed with status: {}", response.status()));
     }
 
-    // Parse JSON response
+    // Attempt to deserialize the JSON response.
     let parsed: EtherscanResponse<TokenInfo> = match response.json().await {
-        Ok(parsed) => {
-            // println!("parsed => {:#?}", parsed);
-            parsed
-        }
+        Ok(parsed) => parsed,
         Err(error) => {
             warn!("could not decode => {}", error);
 
-            // // TESTING >>>>>>>>>>>>>>>>
-            // sleep(Duration::from_millis(1000)).await;
+            // Retry fetching the data if needed.
             let response = client.get(&url).send().await?;
             let response_text = response.text().await?;
             println!("response_text => {}", response_text);
@@ -404,7 +447,7 @@ contractaddress={}&apikey={}",
         }
     };
 
-    // Check Etherscan response status
+    // Ensure the response indicates success.
     if parsed.status != "1" {
         return Err(anyhow!(
             "Etherscan returned status={}, message={}",
@@ -413,7 +456,7 @@ contractaddress={}&apikey={}",
         ));
     }
 
-    // Convert to Vec<TokenHolders>
+    // Convert the first token info result into TokenWebData.
     match parsed.result.first() {
         Some(result) => Ok(Some(TokenWebData {
             website: result.website.clone(),
@@ -427,6 +470,11 @@ contractaddress={}&apikey={}",
     }
 }
 
+/// Internal helper function to retrieve the Etherscan API key from the environment.
+///
+/// # Returns
+///
+/// A `Result` containing the API key as a `String` or an error if it is not set.
 fn get_etherscan_api_key() -> anyhow::Result<String> {
     let etherscan_key =
         std::env::var("ETHERSCAN_API_KEY").expect("ETHERSCAN_API_KEY is not set in .env");
@@ -434,8 +482,23 @@ fn get_etherscan_api_key() -> anyhow::Result<String> {
     Ok(etherscan_key)
 }
 
+/// Internal helper function to retrieve the Etherscan API URL from the environment.
+///
+/// # Returns
+///
+/// A `Result` containing the API URL as a `String` or an error if it is not set.
 fn get_etherscan_api() -> anyhow::Result<String> {
     let etherscan_key = std::env::var("ETHERSCAN_API").expect("ETHERSCAN_API is not set in .env");
 
     Ok(etherscan_key)
+}
+
+/// Internal struct representing a token holder entry as returned by the Etherscan API.
+#[derive(Debug, Deserialize)]
+struct EtherscanHolderEntry {
+    #[serde(rename = "TokenHolderAddress")]
+    token_holder_address: String,
+
+    #[serde(rename = "TokenHolderQuantity")]
+    token_holder_quantity: String,
 }
