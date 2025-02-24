@@ -1,8 +1,10 @@
 use anyhow::Result;
 use chainshield_backend::abi::erc20::ERC20;
 use chainshield_backend::app_config::AI_MODEL;
-use chainshield_backend::data::contracts::CONTRACT;
-use chainshield_backend::data::token_data::{get_token_uniswap_v2_pair_address, ERC20Token};
+use chainshield_backend::data::chain_data::CHAIN_DATA;
+use chainshield_backend::data::token_data::{
+    get_token_uniswap_v2_pair_address, ERC20Token, TokenDex,
+};
 use chainshield_backend::token_check::token_checklist::generate_token_checklist;
 use chainshield_backend::token_check::token_score::{
     get_token_score_with_ai, get_token_score_with_rules_based_approch,
@@ -74,7 +76,7 @@ async fn test_generate_checklist_mainnet() -> anyhow::Result<()> {
 /// get ERC20Token - struct that contains all data we need - from token address
 pub async fn setup(token_address: &str) -> Result<SetupData> {
     dotenv().ok();
-    let ws_url = CONTRACT.get_address().ws_url.clone();
+    let ws_url = CHAIN_DATA.get_address().ws_url.clone();
     let provider = Provider::<Ws>::connect(ws_url).await?;
     let client = Arc::new(provider.clone());
 
@@ -96,8 +98,11 @@ pub async fn setup(token_address: &str) -> Result<SetupData> {
         symbol,
         decimals,
         address: token_address_h160,
-        pair_address,
-        is_token_0,
+        token_dex: TokenDex {
+            pair_or_pool_address: pair_address,
+            is_token_0,
+            ..Default::default()
+        },
         ..Default::default()
     };
 

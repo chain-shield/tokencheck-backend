@@ -1,0 +1,66 @@
+# .cursor/rules.yaml
+
+rules:
+  - name: Prefer ? operator over unwrap
+    description: |
+      Whenever encountering 'unwrap()' or 'expect()', prompt the AI to replace
+      with the ? operator or more explicit error handling.
+    triggers:
+      - "unwrap("
+      - "expect("
+    transforms:
+      - "Replace unwrap() with ? if feasible."
+      - "Replace expect() with ? if feasible."
+      - "If ? is not appropriate, suggest Result-based error handling."
+
+  - name: Enforce Rust 2021 edition
+    description: Ensure Cargo.toml uses the 2021 edition.
+    triggers:
+      - "edition = \"2018\""
+      - "edition=\"2018\""
+      - "edition = \"2021\""
+    transforms:
+      - "Set edition to 2021 in Cargo.toml if it's not already."
+
+  - name: Avoid clone on Copy types
+    description: If type implements Copy, prefer passing by value over clone().
+    triggers:
+      - ".clone()"
+    transforms:
+      - "Check if the variable's type implements Copy. If so, remove .clone()."
+
+  - name: Ensure doc comments on public items
+    description: Prompt the user/AI to add doc comments on all public items.
+    triggers:
+      - "pub fn"
+      - "pub struct"
+      - "pub enum"
+      - "pub trait"
+    transforms:
+      - "If missing doc comments, add `///` or multiline `/** */` doc comments explaining usage."
+
+  - name: Replace old-style try! macros
+    description: Prefer the ? operator over the try! macro.
+    triggers:
+      - "try!("
+    transforms:
+      - "Replace `try!(...)` with `...?`."
+
+  - name: Check for `cargo fmt`
+    description: Remind to format code.
+    triggers:
+      - "fn "
+      - "struct "
+      - "enum "
+    transforms:
+      - "Suggest or auto-run `cargo fmt` to keep code style consistent."
+
+  - name: Async & Await usage
+    description: Encourage idiomatic async Rust usage.
+    triggers:
+      - "futures::"
+      - "tokio::"
+    transforms:
+      - "Ensure usage of async/await where possible."
+      - "Remove manual poll or block_on if using async/await."
+

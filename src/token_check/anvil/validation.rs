@@ -1,73 +1,72 @@
-use crate::data::contracts::CONTRACT;
+use crate::data::chain_data::CHAIN_DATA;
 use crate::data::token_data::ERC20Token;
 use crate::token_check::anvil::simlator::AnvilTestSimulator;
 use crate::token_check::anvil::tx_trait::Txs;
 use ethers::providers::Middleware;
-use ethers::types::{Transaction, U256};
-use log::{error, info, warn};
+use ethers::types::U256;
+use log::error;
 
+/// Describes the validation status of a token after running simulated buy and sell operations.
 #[derive(Debug, PartialEq, Eq)]
 pub enum TokenStatus {
+    /// The token is deemed valid.
     Legit,
+    /// The token cannot be sold after simulation.
     CannotSell,
+    /// The token cannot be bought in simulation, or buying encountered issues.
     CannotBuy,
 }
 
-pub enum TokenLiquid {
-    NeedToAdd(Transaction),
-    HasEnough,
-}
-
 impl ERC20Token {
-    /// Takes a snapshot of the current blockchain state using anvil
-    pub async fn validate_with_simulated_buy_sell(
-        &self,
-        liquidity_status: TokenLiquid,
-    ) -> anyhow::Result<TokenStatus> {
-        // launch new anvil node for validation
-        let ws_url = CONTRACT.get_address().ws_url.clone();
+    /// Takes a snapshot of the current blockchain state using anvil by simulating buy and sell operations.
+    ///
+    /// This function runs through several steps to check token behavior:
+    /// 1. Optionally simulate adding liquidity based on the provided `TokenLiquid` variant.
+    /// 2. Attempt to buy the token. If the purchase fails or no tokens are received, the token is marked as unable to be bought.
+    /// 3. Simulate block mining (time elapse) to mimic a real blockchain environment.
+    /// 4. Check that the token balance remains stable after simulated time elapse.
+    /// 5. Execute a dummy transfer to further validate token stability.
+    /// 6. Lastly, attempt to sell the token. If the balance after sale is not zero, the token is marked as unsellable.
+    ///
+    /// # Arguments
+    ///
+    /// * `liquidity_status` - The current liquidity condition of the token. It can be either a need to add liquidity
+    ///   using a provided transaction or an indication that there is enough liquidity.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `TokenStatus` indicating the result of the validation simulation wrapped in an `anyhow::Result`.
+    ///
+    /// # Errors
+    ///
+    /// If any of the simulation steps fail (for example, during the sell simulation), the error will be propagated.
+    pub async fn validate_with_simulated_buy_sell(&self) -> anyhow::Result<TokenStatus> {
+        // Launch a new anvil node for validation using the websocket URL.
+        let ws_url = CHAIN_DATA.get_address().ws_url.clone();
         let anvil = AnvilTestSimulator::new(&ws_url).await?;
 
         println!("validating token...");
 
-        match liquidity_status {
-            TokenLiquid::NeedToAdd(add_liquidity_tx) => {
-                // simulate adding liquidity
-                // println!("simulate adding liquidity before buying");
-                anvil.add_liquidity_eth(&add_liquidity_tx).await?;
-            }
-            TokenLiquid::HasEnough => {}
-        }
-
-        // Try to buy the token
-        // let balance_before = anvil.get_token_balance(token).await?;
-        // println!("simulate buying token for validation");
+        // Attempt to buy the token using the anvil simulator.
         let buy_result = anvil.simulate_buying_token_for_weth(self).await;
 
         if let Err(err) = buy_result {
             error!("Buy transaction failed with error: {:?}", err);
-            // If buying fails, revert to the snapshot so no state is changed
+            // If buying fails, the token is considered not purchasable.
             return Ok(TokenStatus::CannotBuy);
         }
 
+        // Unwrap the token balance received after a successful simulated purchase.
         let token_balance = buy_result?;
 
         println!("check token balance after purchase");
         if token_balance == U256::from(0) {
             println!("No tokens received after buy, reverting...");
-            // revert if something suspicious
+            // If no tokens are received, mark as unable to buy.
             return Ok(TokenStatus::CannotBuy);
         }
 
-        // Increase time by 300 seconds (5 minutes)
-        // println!("simulating time elapse of 5 mins");
-        // anvil
-        //     .signed_client
-        //     .provider()
-        //     .request::<_, u64>("evm_increaseTime", [3000u64])
-        //     .await?;
-
-        // elapse time with blocks mine
+        // Simulate block creation to mimic a passing of time.
         println!("simulating creating blocks");
         let _ = anvil
             .signed_client
@@ -76,45 +75,45 @@ impl ERC20Token {
             .await?;
 
         println!("check token balance after five minutes");
-        // check token balance did not drop after time elapse
+        // Check that token balance after time elapse is not degraded.
         let balance_after_buy = anvil
             .get_wallet_token_balance_by_address(self.address)
             .await?;
         if balance_after_buy < token_balance {
-            println!("Token are dropping or going to zero after 5 mins...");
-            // revert if something suspicious
+            println!("Tokens are dropping or going to zero after 5 mins...");
+            // If the token balance drops, mark as non-purchasable.
             return Ok(TokenStatus::CannotBuy);
         }
 
-        // simulate transfer between wallets
+        // Simulate a dummy transfer to further verify token stability.
         println!("do dummy transfer");
         anvil
             .do_dummy_transfer(self.address, balance_after_buy)
             .await?;
 
         println!("check token balance after transfers");
-        // check token balance did not drop after time elapse
+        // Verify that the token balance remains stable after the transfer.
         let balance_after_transfer = anvil
             .get_wallet_token_balance_by_address(self.address)
             .await?;
         if balance_after_transfer < token_balance {
-            println!("Token are dropping or going to zero after transfer...");
-            // revert if something suspicious
+            println!("Tokens are dropping or going to zero after transfer...");
+            // If token balance drops post-transfer, mark as non-purchasable.
             return Ok(TokenStatus::CannotBuy);
         }
 
-        // Now attempt to sell
+        // Attempt to sell the token.
         println!("simulate selling token for validation");
         let sell_result = anvil.simulate_selling_token_for_weth(self).await;
         match sell_result {
             Ok(_) => {
-                // println!("check token balance after sale (should be zero)");
+                // After a successful sell, ensure that the token balance becomes zero.
                 let balance_after_sell = anvil
                     .get_wallet_token_balance_by_address(self.address)
                     .await?;
                 if balance_after_sell != U256::from(0) {
-                    println!("cannot sell {}, scam alert", self.name);
-                    // If you must revert because the sale is unsuccessful, do it here
+                    println!("Cannot sell {}, scam alert", self.name);
+                    // If the balance is not zero after sale, the token is flagged as unsellable.
                     return Ok(TokenStatus::CannotSell);
                 }
 

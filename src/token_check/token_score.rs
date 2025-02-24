@@ -1,3 +1,6 @@
+//! This module provides functionality for scoring tokens based on both AI-based and rules-based evaluations.
+//! It defines the TokenScore enum and functions get_token_score_with_ai and get_token_score_with_rules_based_approch.
+
 use serde::Deserialize;
 
 use crate::{
@@ -29,7 +32,14 @@ pub struct TokenScoreAssessment {
     pub reason: String,
 }
 
-/// Return token reputation score based on LLM evaluation
+/// Returns the token reputation score based on an AI evaluation of the provided token checklist.
+///
+/// # Arguments
+/// * `token_checklist` - A checklist containing token evaluation data.
+/// * `ai_model` - A reference to the AI model used for evaluation.
+///
+/// # Returns
+/// * A Result containing an optional TokenScoreAssessment.
 pub async fn get_token_score_with_ai(
     token_checklist: TokenCheckList,
     ai_model: &AIModel,
@@ -48,7 +58,13 @@ pub async fn get_token_score_with_ai(
     Ok(token_final_score)
 }
 
-/// Return token reputation score based on rules based approach
+/// Returns the token reputation score based on a rules-based evaluation of the provided token checklist.
+///
+/// # Arguments
+/// * `token_checklist` - A checklist containing token evaluation data.
+///
+/// # Returns
+/// * A TokenScore enum representing the token's reputation.
 pub fn get_token_score_with_rules_based_approch(token_checklist: TokenCheckList) -> TokenScore {
     // check if token passed simulation
     match token_checklist.is_token_sellable {

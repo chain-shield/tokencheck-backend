@@ -1,9 +1,13 @@
+//! This module provides functions to check whether the liquidity tokens of an ERC20 token
+//! are locked above a given threshold. It interfaces with external APIs (Etherscan or The Graph)
+//! depending on the chain and aggregates data from known token locker addresses.
+
 use anyhow::Result;
 use ethers::prelude::*;
 use std::sync::Arc;
 
 use crate::{
-    app_config::{API_CHECK_LIMIT, CHAIN, TOKEN_LOCKERS_BASE, TOKEN_LOCKERS_MAINNET},
+    app_config::{CHAIN, TOKEN_LOCKERS_BASE, TOKEN_LOCKERS_MAINNET},
     token_check::external_api::{
         etherscan_api::get_token_holder_list, thegraph_api::fetch_uniswap_lp_holders,
     },
@@ -11,76 +15,82 @@ use crate::{
 
 use crate::data::token_data::ERC20Token;
 
-/// This function demonstrates how you might verify that >= 80% of the LP tokens
-/// for a given Uniswap V2 pair are held by "locker" contracts, the burn address,
-/// or any “safe” addresses you trust (like 0x00...dead).
+/// Represents a token holder with its address and the token balance held.
 ///
-/// # Arguments
-/// * `pair_address` - The Uniswap V2 pair address (the LP token).
-/// * `known_lockers` - A list of addresses known to be liquidity lock contracts
-///                     (TeamFinance, Unicrypt, PinkLock, etc.) or the burn address.
-/// * `threshold_percent` - e.g. 80 for 80%
-/// * `provider` - An ethers provider to call the contract methods.
-///
-/// # Returns
-/// Ok(true)  => at least threshold% is locked
-/// Ok(false) => less than threshold% is locked
-///
-/// # Implementation Details
-/// 1) We fetch the total supply of the pair (LP token).
-/// 2) We retrieve top holders (the largest addresses that hold these LP tokens).
-///    This step requires a subgraph or block explorer API you must implement.
-/// 3) We sum up the balances for known lockers or burn addresses.
-/// 4) Compare that sum to total_supply * threshold_percent / 100.
-///
-/// Final output struct you'd like to return
+/// This struct is used to store information about liquidity token holders fetched from external APIs.
 #[derive(Debug, Default)]
 pub struct TokenHolders {
+    /// The address of the token holder.
     pub holder: String,
+    /// The token balance of the holder.
     pub quantity: U256,
 }
 
+/// Checks if the liquidity of the given token is locked above a specified threshold.
+///
+/// This asynchronous function retrieves the total liquidity token supply and the list of top holders
+/// (using either Etherscan or The Graph based on the chain). It then determines:
+///  1. The top holder by liquidity.
+///  2. The total locked balance by summing the balances from addresses that are on the designated
+///     list of token locker addresses.
+///  3. Whether this locked balance meets or exceeds a given percentage (threshold) of the total supply.
+///
+/// # Arguments
+///
+/// * `token` - A reference to the ERC20 token for which the liquidity lock status is being checked.
+/// * `threshold_percent` - The percentage threshold (as a float) to determine if the liquidity is sufficiently locked.
+/// * `client` - An asynchronous client (wrapped in an Arc) that is used to interact with the Ethereum node.
+///
+/// # Returns
+///
+/// * `Result<Option<bool>>` - Returns:
+///     - `Ok(Some(true))` if the locked balance is greater than or equal to the threshold,
+///     - `Ok(Some(false))` if it is below the threshold,
+///     - `Ok(None)` if data is insufficient (e.g., when no valid top holder is found),
+///     - or an error if any of the external API calls or data processing fails.
+///
+/// # Examples
+///
+/// ```no_run
+/// # use ethers::prelude::*;
+/// # use std::sync::Arc;
+/// # async fn example(token: ERC20Token, client: Arc<Provider<Ws>>) -> anyhow::Result<()> {
+/// let is_locked = is_liquidity_locked(&token, 50.0, &client).await?;
+/// match is_locked {
+///     Some(true) => println!("Liquidity is locked above threshold."),
+///     Some(false) => println!("Liquidity lock below threshold."),
+///     None => println!("Insufficient data to determine liquidity lock status."),
+/// }
+/// # Ok(())
+/// # }
+/// ```
 pub async fn is_liquidity_locked(
     token: &ERC20Token,
     threshold_percent: f64,
     client: &Arc<Provider<Ws>>,
 ) -> Result<Option<bool>> {
-    // check api limit for this token is not reached
-    // let api_count = token.graphql_check_count().await;
-    // if api_count > API_CHECK_LIMIT {
-    //     println!("api limit reached for {}", token.name);
-    //     return Ok(Some(false));
-    // }
-
+    // Retrieve the total liquidity token supply from the token contract.
     let total_supply = token.get_total_liquidity_token_supply(client).await?;
-    // Step 2) Retrieve top holder info. This is the part you'll have to implement
-    //         with a subgraph or block explorer. For now, we assume a function:
-    // fetch_top_lp_holders(pair_address) -> Vec<LpHolderInfo>
+
+    // Retrieve the list of top liquidity providers from an external API.
+    // Uses different implementations based on the chain configuration.
     let top_holders: Vec<TokenHolders> = if CHAIN == Chain::Base {
-        get_token_holder_list(token.pair_address).await?
+        // For Base chain, use the Etherscan API.
+        get_token_holder_list(token.token_dex.pair_or_pool_address).await?
     } else {
-        fetch_uniswap_lp_holders(token.pair_address).await?
+        // For other chains (e.g., Mainnet), use the The Graph API.
+        fetch_uniswap_lp_holders(token.token_dex.pair_or_pool_address).await?
     };
 
-    //increment api count
-    // token.increment_graphql_checks().await;
-    //
-    // if top_holders.is_empty() {
-    //     // no token holders found yet
-    //     return Ok(None);
-    // }
-
-    // Step 3) Sum up balances for addresses in known_lockers
+    // Initialize the sum of locked token balances to zero.
     let mut locked_balance = U256::zero();
 
-    // We'll treat addresses in `known_lockers` as well as any "dead" or "burn" addresses as locked
-    // For example, 0x000000000000000000000000000000000000dEaD
-    // or 0x0000000000000000000000000000000000000000 if you want
-    // to do that, you can add them to the known_lockers array.
+    // Variable to track the top holder (the one with the highest token quantity).
     let mut top_holder = TokenHolders::default();
 
+    // Iterate over each token holder entry.
     for info in top_holders.iter() {
-        // find top holder
+        // Update top_holder if the current holder has a larger quantity.
         if top_holder.quantity < info.quantity {
             top_holder = TokenHolders {
                 holder: info.holder.clone(),
@@ -88,8 +98,8 @@ pub async fn is_liquidity_locked(
             };
         }
 
+        // Depending on the chain, sum up balances from all known locker addresses.
         if CHAIN == Chain::Mainnet {
-            // sum up all locked holdings
             if TOKEN_LOCKERS_MAINNET.contains(&info.holder.as_str()) {
                 locked_balance = locked_balance + info.quantity;
             }
@@ -100,19 +110,20 @@ pub async fn is_liquidity_locked(
         }
     }
 
-    // require
+    // If no valid top holder is found (i.e., top_holder quantity is zero), return None.
     if top_holder.quantity == U256::zero() {
         return Ok(None);
     }
 
+    // Log the top holder's details for debugging or information purposes.
     println!(
         "top holder for {} LP is {} with {}",
         token.name, top_holder.holder, top_holder.quantity
     );
 
-    // convert locked balance to U256
-    // Step 4) check if locked_balance >= threshold% of total supply
+    // Calculate the required locked balance based on the provided threshold percentage.
     let required_locked = total_supply * U256::from(threshold_percent as u64) / U256::from(100_u64);
+    // Check if the aggregated locked balance meets or exceeds this calculated threshold.
     let locked_enough = locked_balance >= required_locked;
 
     Ok(Some(locked_enough))
