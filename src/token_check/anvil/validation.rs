@@ -1,4 +1,4 @@
-use crate::data::contracts::CONTRACT;
+use crate::data::chain_data::CHAIN_DATA;
 use crate::data::token_data::ERC20Token;
 use crate::token_check::anvil::simlator::AnvilTestSimulator;
 use crate::token_check::anvil::tx_trait::Txs;
@@ -42,7 +42,7 @@ impl ERC20Token {
     /// If any of the simulation steps fail (for example, during the sell simulation), the error will be propagated.
     pub async fn validate_with_simulated_buy_sell(&self) -> anyhow::Result<TokenStatus> {
         // Launch a new anvil node for validation using the websocket URL.
-        let ws_url = CONTRACT.get_address().ws_url.clone();
+        let ws_url = CHAIN_DATA.get_address().ws_url.clone();
         let anvil = AnvilTestSimulator::new(&ws_url).await?;
 
         println!("validating token...");

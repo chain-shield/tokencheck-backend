@@ -1,7 +1,7 @@
 use super::simlator::AnvilTestSimulator;
 use crate::abi::erc20::ERC20;
 use crate::abi::uniswap_factory_v2::UNISWAP_V2_FACTORY;
-use crate::data::contracts::CONTRACT;
+use crate::data::chain_data::CHAIN_DATA;
 use crate::data::token_data::ERC20Token;
 use crate::token_check::anvil::tx_trait::Txs;
 use crate::utils::type_conversion::address_to_string;
@@ -109,14 +109,14 @@ impl AnvilTestSimulator {
     /// - `Result<()>`: Returns Ok if the pair address is successfully retrieved, or an error otherwise.
     pub async fn show_eth_uniswap_v2_pair(&self, token: &ERC20Token) -> anyhow::Result<()> {
         // Retrieve addresses for the Uniswap V2 Factory and WETH contracts.
-        let factory_address: Address = CONTRACT.get_address().uniswap_v2_factory.parse()?;
-        let weth_address: Address = CONTRACT.get_address().weth.parse()?;
+        let factory_address: Address = CHAIN_DATA.get_address().uniswap_v2_factory.parse()?;
+        let weth_address: Address = CHAIN_DATA.get_address().weth.parse()?;
 
         // Create an instance of the Uniswap V2 Factory contract.
         let factory = UNISWAP_V2_FACTORY::new(factory_address, self.signed_client());
 
         // Depending on the token orientation, query the appropriate pair.
-        if token.is_token_0 {
+        if token.token_dex.is_token_0 {
             let pair_address = factory.get_pair(token.address, weth_address).call().await?;
             debug!("pair address for WETH-{}: {:?}", token.name, pair_address);
         } else {
@@ -125,7 +125,7 @@ impl AnvilTestSimulator {
         }
 
         // Convert the stored pair address to a string and log it.
-        let pair_address = address_to_string(token.pair_address);
+        let pair_address = address_to_string(token.token_dex.pair_or_pool_address);
         debug!(
             "REAL pair address for WETH-{}: {:?}",
             token.name, pair_address

@@ -13,7 +13,7 @@ pub mod abi {
 }
 
 pub mod data {
-    pub mod contracts;
+    pub mod chain_data;
     pub mod token_data;
 }
 

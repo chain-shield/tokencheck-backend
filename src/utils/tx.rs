@@ -3,7 +3,7 @@
 
 use crate::abi::uniswap_router_v2::UNISWAP_V2_ROUTER;
 use crate::app_config::CHAIN;
-use crate::data::contracts::CONTRACT;
+use crate::data::chain_data::CHAIN_DATA;
 use anyhow::{anyhow, Context, Result};
 use ethers::core::k256::ecdsa::SigningKey;
 use ethers::types::{Address, Block, BlockNumber, H256, U256, U64};
@@ -57,7 +57,7 @@ pub async fn get_amount_out_uniswap_v2(
     client: &Arc<Provider<Ws>>,
 ) -> anyhow::Result<U256> {
     // Parse the Uniswap V2 router address from the contract configuration.
-    let uniswap_v2_router_address: Address = CONTRACT
+    let uniswap_v2_router_address: Address = CHAIN_DATA
         .get_address()
         .uniswap_v2_router
         .parse()

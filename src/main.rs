@@ -7,8 +7,8 @@ use chainshield_backend::{
     abi::erc20::ERC20,
     app_config::AI_MODEL,
     data::{
-        contracts::CONTRACT,
-        token_data::{get_token_uniswap_v2_pair_address, ERC20Token},
+        chain_data::CHAIN_DATA,
+        token_data::{get_token_uniswap_v2_pair_address, ERC20Token, TokenDex},
     },
     token_check::{
         token_checklist::generate_token_checklist,
@@ -81,7 +81,7 @@ async fn main() -> Result<()> {
 /// Returns an error if any step in the initialization (e.g., connecting to the provider, parsing addresses, or fetching data) fails.
 pub async fn setup(token_address: &str) -> Result<SetupData> {
     dotenv().ok();
-    let ws_url = CONTRACT.get_address().ws_url.clone();
+    let ws_url = CHAIN_DATA.get_address().ws_url.clone();
     let provider = Provider::<Ws>::connect(ws_url).await?;
     let client = Arc::new(provider.clone());
 
@@ -104,8 +104,11 @@ pub async fn setup(token_address: &str) -> Result<SetupData> {
         symbol,
         decimals,
         address: token_address_h160,
-        pair_address,
-        is_token_0,
+        token_dex: TokenDex {
+            pair_or_pool_address: pair_address,
+            is_token_0,
+            ..Default::default()
+        },
         ..Default::default()
     };
 

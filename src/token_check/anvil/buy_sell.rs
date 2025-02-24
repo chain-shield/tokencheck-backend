@@ -4,7 +4,7 @@
 
 use crate::abi::erc20::ERC20;
 use crate::abi::uniswap_router_v2::UNISWAP_V2_ROUTER;
-use crate::data::contracts::CONTRACT;
+use crate::data::chain_data::CHAIN_DATA;
 use crate::data::token_data::ERC20Token;
 use crate::token_check::anvil::tx_trait::Txs;
 use crate::utils::tx::{get_amount_out_uniswap_v2, test_amount_of_token_to_purchase, TxSlippage};
@@ -35,8 +35,8 @@ impl AnvilTestSimulator {
     ///
     /// * [`anyhow::Result<U256>`] - Returns the updated token balance after the purchase.
     pub async fn simulate_buying_token_for_weth(&self, token: &ERC20Token) -> anyhow::Result<U256> {
-        let router_address: Address = CONTRACT.get_address().uniswap_v2_router.parse()?;
-        let weth_address: Address = CONTRACT.get_address().weth.parse()?;
+        let router_address: Address = CHAIN_DATA.get_address().uniswap_v2_router.parse()?;
+        let weth_address: Address = CHAIN_DATA.get_address().weth.parse()?;
 
         let mut new_token_balance = U256::from(0);
         let router = UNISWAP_V2_ROUTER::new(router_address, self.signed_client.clone());
@@ -142,8 +142,8 @@ impl AnvilTestSimulator {
         &self,
         token: &ERC20Token,
     ) -> anyhow::Result<U256> {
-        let router_address: Address = CONTRACT.get_address().uniswap_v2_router.parse()?;
-        let weth_address: Address = CONTRACT.get_address().weth.parse()?;
+        let router_address: Address = CHAIN_DATA.get_address().uniswap_v2_router.parse()?;
+        let weth_address: Address = CHAIN_DATA.get_address().weth.parse()?;
         let token_contract = ERC20::new(token.address, self.signed_client.clone());
 
         let mut new_token_balance = U256::from(0);

@@ -76,10 +76,10 @@ pub async fn is_liquidity_locked(
     // Uses different implementations based on the chain configuration.
     let top_holders: Vec<TokenHolders> = if CHAIN == Chain::Base {
         // For Base chain, use the Etherscan API.
-        get_token_holder_list(token.pair_address).await?
+        get_token_holder_list(token.token_dex.pair_or_pool_address).await?
     } else {
         // For other chains (e.g., Mainnet), use the The Graph API.
-        fetch_uniswap_lp_holders(token.pair_address).await?
+        fetch_uniswap_lp_holders(token.token_dex.pair_or_pool_address).await?
     };
 
     // Initialize the sum of locked token balances to zero.

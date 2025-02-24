@@ -1,9 +1,9 @@
 use chainshield_backend::{
     abi::erc20::ERC20,
     app_config::AI_MODEL,
-    data::contracts::CONTRACT,
+    data::chain_data::CHAIN_DATA,
     token_check::{
-        ai::ai_submission::{check_code_with_ai, AIModel},
+        ai::ai_submission::check_code_with_ai,
         external_api::etherscan_api::{get_source_code, get_token_info},
     },
     utils::web_scrapper::scrape_site_and_get_text,
@@ -40,7 +40,7 @@ async fn test_audit_token_contract() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_scrapper() -> anyhow::Result<()> {
     dotenv().ok();
-    let ws_url = CONTRACT.get_address().ws_url.clone();
+    let ws_url = CHAIN_DATA.get_address().ws_url.clone();
     let provider = Provider::<Ws>::connect(ws_url).await?;
     let client = Arc::new(provider.clone());
 

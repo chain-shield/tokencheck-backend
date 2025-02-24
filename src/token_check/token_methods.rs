@@ -33,7 +33,7 @@ impl ERC20Token {
         client: &Arc<Provider<Ws>>,
     ) -> anyhow::Result<U256> {
         // Connect to the Uniswap pair contract at the stored pair address.
-        let pool = UNISWAP_PAIR::new(self.pair_address, client.clone());
+        let pool = UNISWAP_PAIR::new(self.token_dex.pair_or_pool_address, client.clone());
 
         // Query the total supply of liquidity tokens.
         let supply = pool.total_supply().call().await?;
@@ -79,13 +79,17 @@ impl ERC20Token {
     /// * `Err(anyhow::Error)` in case of an error during the contract call.
     pub async fn has_enough_liquidity(&self, client: &Arc<Provider<Ws>>) -> anyhow::Result<bool> {
         // Connect to the Uniswap pair contract.
-        let pool = UNISWAP_PAIR::new(self.pair_address, client.clone());
+        let pool = UNISWAP_PAIR::new(self.token_dex.pair_or_pool_address, client.clone());
 
         // Retrieve the current reserves from the liquidity pool.
         let (reserve0, reserve1, _) = pool.get_reserves().call().await?;
 
         // Determine which reserve corresponds to ETH based on token position.
-        let eth_supply = if self.is_token_0 { reserve1 } else { reserve0 };
+        let eth_supply = if self.token_dex.is_token_0 {
+            reserve1
+        } else {
+            reserve0
+        };
 
         Ok(eth_supply >= MIN_LIQUIDITY)
     }
@@ -104,13 +108,17 @@ impl ERC20Token {
     /// * `Err(anyhow::Error)` if an error occurs during the contract call.
     pub async fn get_liquidity(&self, client: &Arc<Provider<Ws>>) -> anyhow::Result<u128> {
         // Connect to the Uniswap pair contract.
-        let pool = UNISWAP_PAIR::new(self.pair_address, client.clone());
+        let pool = UNISWAP_PAIR::new(self.token_dex.pair_or_pool_address, client.clone());
 
         // Retrieve the reserves data.
         let (reserve0, reserve1, _) = pool.get_reserves().call().await?;
 
         // Determine the ETH-based liquidity depending on token arrangement.
-        let eth_supply = if self.is_token_0 { reserve1 } else { reserve0 };
+        let eth_supply = if self.token_dex.is_token_0 {
+            reserve1
+        } else {
+            reserve0
+        };
 
         Ok(eth_supply)
     }
@@ -136,7 +144,7 @@ impl ERC20Token {
         client: &Arc<Provider<Ws>>,
     ) -> anyhow::Result<bool> {
         // Connect to the Uniswap pair contract.
-        let pool = UNISWAP_PAIR::new(self.pair_address, client.clone());
+        let pool = UNISWAP_PAIR::new(self.token_dex.pair_or_pool_address, client.clone());
 
         // Calculate the amount of tokens required to execute the trade.
         let eth_amount_used_for_purchase = amount_of_token_to_purchase()?;
@@ -145,7 +153,7 @@ impl ERC20Token {
         let (reserve0, reserve1, _) = pool.get_reserves().call().await?;
 
         // Based on the token's position in the pair, assign the proper reserves for ETH and token supplies.
-        let (eth_supply, token_supply) = if self.is_token_0 {
+        let (eth_supply, token_supply) = if self.token_dex.is_token_0 {
             (reserve1, reserve0)
         } else {
             (reserve0, reserve1)

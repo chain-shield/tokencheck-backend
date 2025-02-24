@@ -4,12 +4,75 @@
 use crate::abi::erc20::ERC20;
 use crate::abi::uniswap_factory_v2::UNISWAP_V2_FACTORY;
 use crate::abi::uniswap_pair::UNISWAP_PAIR;
-use crate::data::contracts::CONTRACT;
 use anyhow::Result;
 use ethers::providers::{Provider, Ws};
-use ethers::types::{Address, U256};
-use log::{error, info, warn};
+use ethers::types::Address;
+use log::info;
 use std::sync::Arc;
+
+use super::chain_data::CHAIN_DATA;
+
+// list of dexes
+#[derive(Clone, Default, Debug)]
+pub enum Dex {
+    #[default]
+    UniswapV2,
+    UniswapV3,
+    UniswapV4,
+    Aerodrome,
+    Sushiswap,
+    Balancer,
+    Curve,
+    DackieSwap,
+    BasedSwap,
+    AlienBase,
+    OasisSwap,
+    LFGSwap,
+    IcecreamSwap,
+    Glacier,
+    CrescentSwap,
+    Throne,
+    EtherVista,
+    KokonutSwap,
+    BakerySwap,
+    CbsSwap,
+    MoonBase,
+    DegenBrains,
+    Fwx,
+    CandySwap,
+    Memebox,
+    BasoFinance,
+    DerpDex,
+    Satori,
+    HorizonDex,
+    BaseX,
+    LeetSwap,
+    RobotsFram,
+    CitadelSwap,
+    Velocimeter,
+    DiamondSwap,
+    SharkSwap,
+    Infusion,
+    NineMm,
+    RocketSwap,
+    Solidly,
+    GammaSwap,
+    Synthswap,
+    IziSwap,
+    Equalizer,
+    SwapBased,
+    Unknown,
+}
+
+/// the top dex the token is listed on
+#[derive(Clone, Default, Debug)]
+pub struct TokenDex {
+    pub dex: Dex,
+    pub pair_or_pool_address: Address,
+    /// A flag indicating whether the token is the first token (token_0)
+    /// in the Uniswap pair; if false the token is token_1.
+    pub is_token_0: bool,
+}
 
 /// Represents an ERC20 token along with its associated Uniswap pair data.
 #[derive(Clone, Default, Debug)]
@@ -23,11 +86,7 @@ pub struct ERC20Token {
     /// The token's contract address.
     pub address: Address,
 
-    /// The Uniswap pair address associated with the token.
-    pub pair_address: Address,
-    /// A flag indicating whether the token is the first token (token_0)
-    /// in the Uniswap pair; if false the token is token_1.
-    pub is_token_0: bool,
+    pub token_dex: TokenDex,
 }
 
 /// Fetches and constructs an `ERC20Token` from a given token address.
@@ -77,8 +136,11 @@ pub async fn get_erc20_by_token_address(
         symbol,
         decimals,
         address: token_address_h160,
-        pair_address,
-        is_token_0,
+        token_dex: TokenDex {
+            pair_or_pool_address: pair_address,
+            is_token_0,
+            ..Default::default()
+        },
         ..Default::default()
     };
 
@@ -117,8 +179,9 @@ pub async fn get_token_uniswap_v2_pair_address(
     client: &Arc<Provider<Ws>>,
 ) -> anyhow::Result<(Address, bool)> {
     // Retrieve configuration addresses from contracts.
-    let uniswap_v2_factory_address: Address = CONTRACT.get_address().uniswap_v2_factory.parse()?;
-    let weth_address: Address = CONTRACT.get_address().weth.parse()?;
+    let uniswap_v2_factory_address: Address =
+        CHAIN_DATA.get_address().uniswap_v2_factory.parse()?;
+    let weth_address: Address = CHAIN_DATA.get_address().weth.parse()?;
 
     // Initialize the Uniswap V2 factory contract to query for pair data.
     let uniswap_factory = UNISWAP_V2_FACTORY::new(uniswap_v2_factory_address, client.clone());

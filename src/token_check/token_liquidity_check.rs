@@ -81,11 +81,11 @@ pub async fn get_percentage_liquidity_locked_or_burned(
     // Retrieve the list of token holders based on the chain configuration.
     let top_holders: Vec<TokenHolders> = if CHAIN == Chain::Base {
         // For Chain::Base, convert the pair address and use the Moralis API.
-        let pair_address = address_to_string(token.pair_address);
+        let pair_address = address_to_string(token.token_dex.pair_or_pool_address);
         moralis::get_token_holder_list(&pair_address).await?
     } else {
         // For other chains, fetch token holders using Uniswap's Graph API.
-        fetch_uniswap_lp_holders(token.pair_address).await?
+        fetch_uniswap_lp_holders(token.token_dex.pair_or_pool_address).await?
     };
 
     // Return None if no token holders are found.

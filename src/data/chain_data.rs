@@ -153,7 +153,7 @@ impl Chains {
 /// Lazily initialized global instance holding all contract addresses for the configured chain.
 ///
 /// The instance is created when first accessed using the configuration defined in `contracts.toml`.
-pub static CONTRACT: Lazy<ContractAddressMap> = Lazy::new(|| {
+pub static CHAIN_DATA: Lazy<ContractAddressMap> = Lazy::new(|| {
     // Load chain configurations from the file.
     let chains = Chains::load();
     // Construct the mapping of chains to their respective contract addresses.
