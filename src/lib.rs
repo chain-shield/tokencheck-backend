@@ -14,6 +14,8 @@ pub mod abi {
 
 pub mod data {
     pub mod chain_data;
+    pub mod provider_manager;
+    pub mod token_checklist_cache;
     pub mod token_data;
 }
 

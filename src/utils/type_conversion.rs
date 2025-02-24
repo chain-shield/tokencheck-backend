@@ -16,8 +16,6 @@ use rust_decimal::Decimal;
 use std::convert::TryInto;
 use std::str::FromStr;
 
-use crate::app_config::TIME_ROUNDS;
-
 /// Truncates `text` to at most `max_len` Unicode characters.
 ///
 /// This function ensures that the text is not cut in the middle of a multibyte character by
@@ -133,41 +131,6 @@ pub fn convert_transaction_to_typed_transaction(
             gas_price: tx.gas_price,
             chain_id: tx.chain_id.map(|id| ethers::types::U64::from(id.as_u64())),
         }))
-    }
-}
-
-/// Computes the time interval index based on the current time and the time of purchase.
-///
-/// The interval is determined using the `TOKEN_SELL_INTERVAL` environment variable. If the computed
-/// index is within the acceptable range defined by `TIME_ROUNDS`, it returns `Ok(Some(index))`;
-/// otherwise, it returns `Ok(None)`.
-///
-/// # Arguments
-///
-/// * `current_time` - The current timestamp as a u32.
-/// * `time_of_purchase` - The timestamp when a purchase occurred.
-///
-/// # Errors
-///
-/// Returns an error if the `TOKEN_SELL_INTERVAL` environment variable is not found or if its value
-/// cannot be parsed.
-pub fn get_time_interval(
-    current_time: u32,
-    time_of_purchase: u32,
-) -> anyhow::Result<Option<usize>> {
-    let time_interval_str =
-        std::env::var("TOKEN_SELL_INTERVAL").context("TOKEN_SELL_INTERVAL not found in .env")?;
-    let time_interval: u32 = time_interval_str.parse()?;
-    let diff = current_time as usize - time_of_purchase as usize;
-
-    // Find time index to make purchase on.
-    let time_index = diff / time_interval as usize;
-
-    // Check that time index is in range for the desired number of time slots.
-    if time_index < TIME_ROUNDS {
-        Ok(Some(time_index))
-    } else {
-        Ok(None)
     }
 }
 

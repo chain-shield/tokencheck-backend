@@ -19,6 +19,9 @@ pub enum AppMode {
 // CHANGE THESE VALUES TO SET CHAIN AND MODE FOR THE APPLICATION
 // ==========================================================================
 
+/// Chains this app supports
+pub const CHAINS: [Chain; 2] = [Chain::Mainnet, Chain::Base];
+
 /// Specifies the blockchain chain where the application operates.
 /// Adjust this value to target a different chain (e.g., Mainnet, Testnet).
 pub const CHAIN: Chain = Chain::Mainnet;
@@ -30,50 +33,19 @@ pub const APP_MODE: AppMode = AppMode::Production;
 /// Specifies the AI model used for token analysis.
 pub const AI_MODEL: AIModel = AIModel::OpenAi;
 
-/// Indicates whether the application should verify if liquidity in tokens is locked.
-pub const CHECK_IF_LIQUIDITY_LOCKED: bool = true;
-
-/// Indicates whether the application should check for honeypot patterns.
-pub const CHECK_IF_HONEYPOT: bool = true;
-
-/// The minimum liquidity required (in wei) for a token to be considered healthy.
-///
 /// This value is set to the equivalent of 10 ether.
 pub const MIN_LIQUIDITY: u128 = 10_000_000_000_000_000_000; // 10 ether
-
-/// A liquidity threshold (in wei) used for initial liquidity verification.
-///
-/// Set to the equivalent of 10 ether.
-pub const MIN_LIQUIDITY_THRESHOLD: u128 = 10_000_000_000_000_000_000; // 10 ether
 
 /// Threshold for very low liquidity (in wei); tokens below this may be high risk.
 ///
 /// Although the comment indicates "3 ether", the value here corresponds to 1 ether.
 pub const VERY_LOW_LIQUIDITY_THRESHOLD: u128 = 1_000_000_000_000_000_000; // 3 ether
 
-/// Threshold (in wei) for detecting low liquidity, which might flag risky tokens.
-///
-/// The value is set to the equivalent of 5 ether.
-pub const LOW_LIQUIDITY_THRESHOLD: u128 = 10_000_000_000_000_000_000; // 5 ether
-
-/// Threshold (in wei) for medium liquidity detection.
-///
-/// This value is set to the equivalent of 10 ether.
-pub const MEDIUM_LIQUIDITY_THRESHOLD: u128 = 15_000_000_000_000_000_000; // 10 ether
-
-/// Threshold (in wei) for high liquidity detection.
-///
-/// This value is set to the equivalent of 20 ether.
-pub const HIGH_LIQUIDITY_THRESHOLD: u128 = 20_000_000_000_000_000_000; // 20 ether
-
 /// Minimum trade factor multiplier used in transactional and liquidity assessments.
 pub const MIN_TRADE_FACTOR: u64 = 10;
 
 /// Minimum reserve ETH factor multiplier used in liquidity calculations.
 pub const MIN_RESERVE_ETH_FACTOR: u64 = 10;
-
-/// The number of time rounds employed during simulation or analysis iterations.
-pub const TIME_ROUNDS: usize = 10;
 
 /// Expected percentage of liquidity that should be locked (expressed as a percentage).
 pub const LIQUIDITY_PERCENTAGE_LOCKED: f64 = 90.0;

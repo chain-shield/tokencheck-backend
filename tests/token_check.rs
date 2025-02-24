@@ -1,6 +1,6 @@
 use anyhow::Result;
 use chainshield_backend::abi::erc20::ERC20;
-use chainshield_backend::app_config::AI_MODEL;
+use chainshield_backend::app_config::{AI_MODEL, CHAIN};
 use chainshield_backend::data::chain_data::CHAIN_DATA;
 use chainshield_backend::data::token_data::{
     get_token_uniswap_v2_pair_address, ERC20Token, TokenDex,
@@ -76,7 +76,7 @@ async fn test_generate_checklist_mainnet() -> anyhow::Result<()> {
 /// get ERC20Token - struct that contains all data we need - from token address
 pub async fn setup(token_address: &str) -> Result<SetupData> {
     dotenv().ok();
-    let ws_url = CHAIN_DATA.get_address().ws_url.clone();
+    let ws_url = CHAIN_DATA.get_address(CHAIN).ws_url.clone();
     let provider = Provider::<Ws>::connect(ws_url).await?;
     let client = Arc::new(provider.clone());
 

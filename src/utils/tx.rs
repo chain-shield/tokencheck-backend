@@ -58,7 +58,7 @@ pub async fn get_amount_out_uniswap_v2(
 ) -> anyhow::Result<U256> {
     // Parse the Uniswap V2 router address from the contract configuration.
     let uniswap_v2_router_address: Address = CHAIN_DATA
-        .get_address()
+        .get_address(CHAIN)
         .uniswap_v2_router
         .parse()
         .context("Failed to parse Uniswap V2 router address")?;

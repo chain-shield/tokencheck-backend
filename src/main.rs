@@ -5,7 +5,7 @@
 use anyhow::Result;
 use chainshield_backend::{
     abi::erc20::ERC20,
-    app_config::AI_MODEL,
+    app_config::{AI_MODEL, CHAIN},
     data::{
         chain_data::CHAIN_DATA,
         token_data::{get_token_uniswap_v2_pair_address, ERC20Token, TokenDex},
@@ -21,6 +21,7 @@ use ethers::{
     providers::{Provider, Ws},
     types::Address,
 };
+use log::info;
 use std::sync::Arc;
 
 /// Whitelist tokens for mainnet testing.
@@ -54,16 +55,16 @@ async fn main() -> Result<()> {
         // Generate token checklist using the fetched token data and client
         let token_checklist = generate_token_checklist(data.token, &data.client).await?;
 
-        println!("token checklist => {:#?}", token_checklist);
+        info!("token checklist => {:#?}", token_checklist);
 
         // Calculate token score based on predefined rules
         let token_score = get_token_score_with_rules_based_approch(token_checklist.clone());
 
-        println!("token score (rule based) => {:#?}", token_score);
+        info!("token score (rule based) => {:#?}", token_score);
 
         // Calculate token score using AI model
         let token_score_ai = get_token_score_with_ai(token_checklist, &AI_MODEL).await?;
-        println!("token score (ai) => {:#?}", token_score_ai);
+        info!("token score (ai) => {:#?}", token_score_ai);
     }
 
     Ok(())
@@ -81,7 +82,7 @@ async fn main() -> Result<()> {
 /// Returns an error if any step in the initialization (e.g., connecting to the provider, parsing addresses, or fetching data) fails.
 pub async fn setup(token_address: &str) -> Result<SetupData> {
     dotenv().ok();
-    let ws_url = CHAIN_DATA.get_address().ws_url.clone();
+    let ws_url = CHAIN_DATA.get_address(CHAIN).ws_url.clone();
     let provider = Provider::<Ws>::connect(ws_url).await?;
     let client = Arc::new(provider.clone());
 

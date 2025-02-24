@@ -9,6 +9,7 @@ use crate::token_check::external_api::etherscan_api::{get_source_code, TokenWebD
 use crate::token_check::token_holder_check::TokenHolderCheck;
 use crate::utils::type_conversion::address_to_string;
 use ethers::providers::{Provider, Ws};
+use std::default;
 use std::sync::Arc;
 
 ///! This module implements token checking functionality to evaluate the
@@ -22,12 +23,8 @@ use std::sync::Arc;
 /// metrics, and token holder information to compute an overall legitimacy score.
 #[derive(Debug, Default, Clone)]
 pub struct TokenCheckList {
-    /// The token name.
-    pub token_name: String,
-    /// The token address.
-    pub token_address: String,
-    /// The token symbol.
-    pub token_symbol: String,
+    // token data including, name ,address, symbol, chain, pair/pool address etc
+    pub token: ERC20Token,
 
     // Fields derived from AI-based code analysis
     /// Flag indicating if the token's source code is possibly associated with a scam.
@@ -135,9 +132,12 @@ pub async fn generate_token_checklist(
 
     // Construct the final TokenCheckList with data from all the above validations.
     let token_holder_check = TokenCheckList {
-        token_name: token.name,
-        token_address,
-        token_symbol: token.symbol,
+        token: ERC20Token {
+            name: token.name,
+            address: token.address,
+            symbol: token.symbol,
+            ..Default::default()
+        },
         possible_scam: token_code_check.possible_scam,
         reason_possible_scam: token_code_check.reason,
         could_legitimately_justify_suspicious_code: token_code_check

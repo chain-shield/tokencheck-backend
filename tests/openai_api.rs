@@ -1,10 +1,12 @@
 use anyhow::Result;
+use chainshield_backend::app_config::CHAIN;
 use chainshield_backend::data::chain_data::CHAIN_DATA;
 use chainshield_backend::data::token_data::{
     get_token_uniswap_v2_pair_address, ERC20Token, TokenDex,
 };
 use chainshield_backend::token_check::external_api::moralis;
 use chainshield_backend::token_check::token_holder_check::get_token_holder_check;
+use chainshield_backend::utils::logging::setup_logger;
 use chainshield_backend::{
     abi::erc20::ERC20,
     app_config::AI_MODEL,
@@ -116,7 +118,7 @@ async fn test_audit_token_contract_2() -> anyhow::Result<()> {
 async fn test_whitelist_contracts() -> anyhow::Result<()> {
     dotenv().ok();
 
-    let ws_url = CHAIN_DATA.get_address().ws_url.clone();
+    let ws_url = CHAIN_DATA.get_address(CHAIN).ws_url.clone();
     let provider = Provider::<Ws>::connect(ws_url).await?;
     let client = Arc::new(provider.clone());
 
@@ -141,7 +143,7 @@ async fn test_whitelist_contracts() -> anyhow::Result<()> {
 async fn test_scamlist_contracts() -> anyhow::Result<()> {
     dotenv().ok();
 
-    let ws_url = CHAIN_DATA.get_address().ws_url.clone();
+    let ws_url = CHAIN_DATA.get_address(CHAIN).ws_url.clone();
     let provider = Provider::<Ws>::connect(ws_url).await?;
     let client = Arc::new(provider.clone());
 
@@ -165,7 +167,7 @@ async fn test_scamlist_contracts() -> anyhow::Result<()> {
 #[ignore]
 async fn test_whitelist_get_info() -> anyhow::Result<()> {
     dotenv().ok();
-    let ws_url = CHAIN_DATA.get_address().ws_url.clone();
+    let ws_url = CHAIN_DATA.get_address(CHAIN).ws_url.clone();
     let provider = Provider::<Ws>::connect(ws_url).await?;
     let client = Arc::new(provider.clone());
 
@@ -194,7 +196,7 @@ async fn test_whitelist_get_info() -> anyhow::Result<()> {
 #[ignore]
 async fn test_whitelist_get_info_using_moralis() -> anyhow::Result<()> {
     dotenv().ok();
-    let ws_url = CHAIN_DATA.get_address().ws_url.clone();
+    let ws_url = CHAIN_DATA.get_address(CHAIN).ws_url.clone();
     let provider = Provider::<Ws>::connect(ws_url).await?;
     let client = Arc::new(provider.clone());
 
@@ -221,7 +223,8 @@ async fn test_whitelist_get_info_using_moralis() -> anyhow::Result<()> {
 /// get ERC20Token - struct that contains all data we need - from token address
 pub async fn setup(token_address: &str) -> Result<SetupData> {
     dotenv().ok();
-    let ws_url = CHAIN_DATA.get_address().ws_url.clone();
+    setup_logger().expect("Failed to initialize logger.");
+    let ws_url = CHAIN_DATA.get_address(CHAIN).ws_url.clone();
     let provider = Provider::<Ws>::connect(ws_url).await?;
     let client = Arc::new(provider.clone());
 

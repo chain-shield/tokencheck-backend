@@ -4,9 +4,10 @@
 use crate::abi::erc20::ERC20;
 use crate::abi::uniswap_factory_v2::UNISWAP_V2_FACTORY;
 use crate::abi::uniswap_pair::UNISWAP_PAIR;
+use crate::app_config::CHAIN;
 use anyhow::Result;
 use ethers::providers::{Provider, Ws};
-use ethers::types::Address;
+use ethers::types::{Address, Chain};
 use log::info;
 use std::sync::Arc;
 
@@ -77,6 +78,8 @@ pub struct TokenDex {
 /// Represents an ERC20 token along with its associated Uniswap pair data.
 #[derive(Clone, Default, Debug)]
 pub struct ERC20Token {
+    /// chain id
+    pub chain: Chain,
     /// The token's full name.
     pub name: String,
     /// The token's symbol.
@@ -180,8 +183,8 @@ pub async fn get_token_uniswap_v2_pair_address(
 ) -> anyhow::Result<(Address, bool)> {
     // Retrieve configuration addresses from contracts.
     let uniswap_v2_factory_address: Address =
-        CHAIN_DATA.get_address().uniswap_v2_factory.parse()?;
-    let weth_address: Address = CHAIN_DATA.get_address().weth.parse()?;
+        CHAIN_DATA.get_address(CHAIN).uniswap_v2_factory.parse()?;
+    let weth_address: Address = CHAIN_DATA.get_address(CHAIN).weth.parse()?;
 
     // Initialize the Uniswap V2 factory contract to query for pair data.
     let uniswap_factory = UNISWAP_V2_FACTORY::new(uniswap_v2_factory_address, client.clone());
