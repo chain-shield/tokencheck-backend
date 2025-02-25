@@ -4,14 +4,16 @@
 use crate::abi::erc20::ERC20;
 use crate::abi::uniswap_factory_v2::UNISWAP_V2_FACTORY;
 use crate::abi::uniswap_pair::UNISWAP_PAIR;
-use crate::app_config::CHAIN;
-use anyhow::Result;
-use ethers::providers::{Provider, Ws};
+use crate::app_config::{CHAIN, CHAINS};
+use anyhow::{anyhow, Result};
+use ethers::contract::ContractError;
+use ethers::providers::{Provider, ProviderError, Ws};
 use ethers::types::{Address, Chain};
 use log::info;
 use std::sync::Arc;
 
 use super::chain_data::CHAIN_DATA;
+use super::provider_manager::get_chain_provider;
 
 // list of dexes
 #[derive(Clone, Default, Debug)]
@@ -201,4 +203,56 @@ pub async fn get_token_uniswap_v2_pair_address(
     let is_token_0 = token_0 != weth_address;
 
     Ok((pair_address, is_token_0))
+}
+
+pub async fn find_chain_token_is_from(token_address: Address) -> anyhow::Result<Option<Chain>> {
+    // loop through L1,L2 clients to find which chain token is from
+    for chain in CHAINS {
+        let chain_provider = get_chain_provider(&chain).await?;
+        let token_contract = ERC20::new(token_address, chain_provider);
+        // Check multiple ERC20 methods to confirm the token's presence
+        let name_result = token_contract.name().call().await;
+        if let Err(e) = &name_result {
+            if is_network_error(e) {
+                return Err(anyhow!("Network error on chain {:?}: {:?}", chain, e));
+            }
+            // If name() fails (e.g., contract doesn’t exist), skip to next chain
+            continue;
+        }
+
+        let symbol_result = token_contract.symbol().call().await;
+        if let Err(e) = &symbol_result {
+            if is_network_error(e) {
+                return Err(anyhow!("Network error on chain {:?}: {:?}", chain, e));
+            }
+            continue;
+        }
+
+        let supply_result = token_contract.total_supply().await;
+        if let Err(e) = &supply_result {
+            if is_network_error(e) {
+                return Err(anyhow!("Network error on chain {:?}: {:?}", chain, e));
+            }
+            continue;
+        }
+
+        // If all calls succeed, we’ve found the chain
+        if name_result.is_ok() && symbol_result.is_ok() && supply_result.is_ok() {
+            if let Ok(name) = name_result {
+                println!("Token found with name: {}", name);
+            }
+            return Ok(Some(chain));
+        }
+    }
+
+    Ok(None)
+}
+
+fn is_network_error(error: &ContractError<Provider<Ws>>) -> bool {
+    match error {
+        ContractError::ProviderError { e } => {
+            matches!(e, ProviderError::JsonRpcClientError(_))
+        }
+        _ => false,
+    }
 }

@@ -30,9 +30,9 @@ pub static PROVIDERS_HASH: Lazy<Arc<HashMap<Chain, Provider<Ws>>>> = Lazy::new(|
     })
 });
 
-pub async fn get_provider(chain: Chain) -> anyhow::Result<Provider<Ws>> {
-    match PROVIDERS_HASH.get(&chain) {
-        Some(provider) => Ok(provider.clone()),
+pub async fn get_chain_provider(chain: &Chain) -> anyhow::Result<Arc<Provider<Ws>>> {
+    match PROVIDERS_HASH.get(chain) {
+        Some(provider) => Ok(Arc::new(provider.clone())),
         None => Err(anyhow!("could not retreive provider")),
     }
 }
