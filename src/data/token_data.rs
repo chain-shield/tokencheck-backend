@@ -5,78 +5,17 @@ use crate::abi::erc20::ERC20;
 use crate::abi::uniswap_factory_v2::UNISWAP_V2_FACTORY;
 use crate::abi::uniswap_pair::UNISWAP_PAIR;
 use crate::app_config::{CHAIN, CHAINS};
+use crate::data::dex::find_top_dex_pair_address_and_is_token_0;
 use anyhow::{anyhow, Result};
 use ethers::contract::ContractError;
 use ethers::providers::{Provider, ProviderError, Ws};
 use ethers::types::{Address, Chain};
-use log::info;
+use log::{error, info};
 use std::sync::Arc;
 
 use super::chain_data::CHAIN_DATA;
+use super::dex::TokenDex;
 use super::provider_manager::get_chain_provider;
-
-// list of dexes
-#[derive(Clone, Default, Debug)]
-pub enum Dex {
-    #[default]
-    UniswapV2,
-    UniswapV3,
-    UniswapV4,
-    Aerodrome,
-    Sushiswap,
-    Balancer,
-    Curve,
-    DackieSwap,
-    BasedSwap,
-    AlienBase,
-    OasisSwap,
-    LFGSwap,
-    IcecreamSwap,
-    Glacier,
-    CrescentSwap,
-    Throne,
-    EtherVista,
-    KokonutSwap,
-    BakerySwap,
-    CbsSwap,
-    MoonBase,
-    DegenBrains,
-    Fwx,
-    CandySwap,
-    Memebox,
-    BasoFinance,
-    DerpDex,
-    Satori,
-    HorizonDex,
-    BaseX,
-    LeetSwap,
-    RobotsFram,
-    CitadelSwap,
-    Velocimeter,
-    DiamondSwap,
-    SharkSwap,
-    Infusion,
-    NineMm,
-    RocketSwap,
-    Solidly,
-    GammaSwap,
-    Synthswap,
-    IziSwap,
-    Equalizer,
-    SwapBased,
-    Unknown,
-}
-
-/// the top dex the token is listed on
-#[derive(Clone, Default, Debug)]
-pub struct TokenDex {
-    pub dex: Dex,
-    pub pair_or_pool_address: Address,
-    /// A flag indicating whether the token is the first token (token_0)
-    /// in the Uniswap pair; if false the token is token_1.
-    pub is_token_0: bool,
-}
-
 /// Represents an ERC20 token along with its associated Uniswap pair data.
 #[derive(Clone, Default, Debug)]
 pub struct ERC20Token {
@@ -92,6 +31,8 @@ pub struct ERC20Token {
     pub address: Address,
 
     pub token_dex: TokenDex,
+
+    pub is_listed_on_dex: bool,
 }
 
 /// Fetches and constructs an `ERC20Token` from a given token address.
@@ -116,19 +57,41 @@ pub struct ERC20Token {
 /// }
 /// ```
 ///
-pub async fn get_erc20_by_token_address(
-    token_address: &str,
-    client: &Arc<Provider<Ws>>,
-) -> Result<Option<ERC20Token>> {
+pub async fn get_core_token_data_by_address(token_address: &str) -> Result<Option<ERC20Token>> {
     info!("Setting up token contract...");
 
     // Parse the token address from a string to an Address.
-    let token_address_h160: Address = token_address.parse()?;
-    let token_contract = ERC20::new(token_address_h160, client.clone());
+    let token_address_h160: Address = match token_address.parse() {
+        Ok(address) => address,
+        Err(_) => {
+            error!("token supplied is not valid address");
+            return Ok(None);
+        }
+    };
 
-    // Retrieve the Uniswap V2 pair address and determine the token position (token_0 or token_1).
-    let (pair_address, is_token_0) =
-        get_token_uniswap_v2_pair_address(token_address_h160, client).await?;
+    let token_chain = match find_chain_token_is_from(token_address_h160).await? {
+        Some(chain) => chain,
+        None => {
+            error!("token could not be found on any chain");
+            return Ok(None);
+        }
+    };
+    let provider = get_chain_provider(&token_chain).await?;
+    let token_contract = ERC20::new(token_address_h160, provider.clone());
+
+    let token_dex =
+        match find_top_dex_pair_address_and_is_token_0(token_address_h160, &provider, token_chain)
+            .await?
+        {
+            Some((dex, pair_address, is_token_0)) => TokenDex {
+                dex,
+                pair_or_pool_address: pair_address,
+                is_token_0,
+            },
+            None => TokenDex::default(), // pair address will be Address(0)
+        };
+
+    let is_listed_on_dex = token_dex.pair_or_pool_address == Address::zero();
 
     // Fetch the basic token data (name, symbol, decimals) from the ERC20 contract.
     info!("Getting basic token info...");
@@ -137,16 +100,13 @@ pub async fn get_erc20_by_token_address(
     let name = token_contract.name().call().await?;
 
     let token = ERC20Token {
+        chain: token_chain,
         name,
         symbol,
         decimals,
         address: token_address_h160,
-        token_dex: TokenDex {
-            pair_or_pool_address: pair_address,
-            is_token_0,
-            ..Default::default()
-        },
-        ..Default::default()
+        token_dex,
+        is_listed_on_dex,
     };
 
     Ok(Some(token))
@@ -248,7 +208,7 @@ pub async fn find_chain_token_is_from(token_address: Address) -> anyhow::Result<
     Ok(None)
 }
 
-fn is_network_error(error: &ContractError<Provider<Ws>>) -> bool {
+pub fn is_network_error(error: &ContractError<Provider<Ws>>) -> bool {
     match error {
         ContractError::ProviderError { e } => {
             matches!(e, ProviderError::JsonRpcClientError(_))

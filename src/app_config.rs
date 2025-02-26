@@ -3,7 +3,7 @@
 //!
 //! Modify these constants to adjust the application's behavior for production, simulation, or testing.
 
-use crate::token_check::ai::ai_submission::AIModel;
+use crate::{data::dex::Dex, token_check::ai::ai_submission::AIModel};
 use ethers::types::Chain;
 
 /// Represents the operational mode of the application.
@@ -21,6 +21,9 @@ pub enum AppMode {
 
 /// Chains this app supports
 pub const CHAINS: [Chain; 2] = [Chain::Mainnet, Chain::Base];
+
+/// dexes supported by app
+pub const DEXES: [Dex; 2] = [Dex::UniswapV2, Dex::UniswapV3];
 
 /// Specifies the blockchain chain where the application operates.
 /// Adjust this value to target a different chain (e.g., Mainnet, Testnet).

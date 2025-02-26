@@ -8,7 +8,8 @@ use chainshield_backend::{
     app_config::{AI_MODEL, CHAIN},
     data::{
         chain_data::CHAIN_DATA,
-        token_data::{get_token_uniswap_v2_pair_address, ERC20Token, TokenDex},
+        dex::TokenDex,
+        token_data::{get_token_uniswap_v2_pair_address, ERC20Token},
     },
     token_check::{
         token_checklist::generate_token_checklist,

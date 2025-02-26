@@ -2,9 +2,8 @@ use anyhow::Result;
 use chainshield_backend::abi::erc20::ERC20;
 use chainshield_backend::app_config::{AI_MODEL, CHAIN};
 use chainshield_backend::data::chain_data::CHAIN_DATA;
-use chainshield_backend::data::token_data::{
-    get_token_uniswap_v2_pair_address, ERC20Token, TokenDex,
-};
+use chainshield_backend::data::dex::TokenDex;
+use chainshield_backend::data::token_data::{get_token_uniswap_v2_pair_address, ERC20Token};
 use chainshield_backend::token_check::token_checklist::generate_token_checklist;
 use chainshield_backend::token_check::token_score::{
     get_token_score_with_ai, get_token_score_with_rules_based_approch,

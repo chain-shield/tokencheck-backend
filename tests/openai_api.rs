@@ -1,9 +1,8 @@
 use anyhow::Result;
 use chainshield_backend::app_config::CHAIN;
 use chainshield_backend::data::chain_data::CHAIN_DATA;
-use chainshield_backend::data::token_data::{
-    get_token_uniswap_v2_pair_address, ERC20Token, TokenDex,
-};
+use chainshield_backend::data::dex::TokenDex;
+use chainshield_backend::data::token_data::{get_token_uniswap_v2_pair_address, ERC20Token};
 use chainshield_backend::token_check::external_api::moralis;
 use chainshield_backend::token_check::token_holder_check::get_token_holder_check;
 use chainshield_backend::utils::logging::setup_logger;
