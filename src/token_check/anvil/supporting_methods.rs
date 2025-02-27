@@ -1,7 +1,6 @@
 use super::simlator::AnvilTestSimulator;
 use crate::abi::erc20::ERC20;
 use crate::abi::uniswap_factory_v2::UNISWAP_V2_FACTORY;
-use crate::app_config::CHAIN;
 use crate::data::chain_data::CHAIN_DATA;
 use crate::data::token_data::ERC20Token;
 use crate::token_check::anvil::tx_trait::Txs;
@@ -110,8 +109,11 @@ impl AnvilTestSimulator {
     /// - `Result<()>`: Returns Ok if the pair address is successfully retrieved, or an error otherwise.
     pub async fn show_eth_uniswap_v2_pair(&self, token: &ERC20Token) -> anyhow::Result<()> {
         // Retrieve addresses for the Uniswap V2 Factory and WETH contracts.
-        let factory_address: Address = CHAIN_DATA.get_address(CHAIN).uniswap_v2_factory.parse()?;
-        let weth_address: Address = CHAIN_DATA.get_address(CHAIN).weth.parse()?;
+        let factory_address: Address = CHAIN_DATA
+            .get_address(&token.chain)
+            .uniswap_v2_factory
+            .parse()?;
+        let weth_address: Address = CHAIN_DATA.get_address(&token.chain).weth.parse()?;
 
         // Create an instance of the Uniswap V2 Factory contract.
         let factory = UNISWAP_V2_FACTORY::new(factory_address, self.signed_client());

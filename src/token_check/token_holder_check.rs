@@ -12,9 +12,7 @@ use ethers::prelude::*;
 use std::sync::Arc;
 
 use crate::{
-    app_config::{
-        CHAIN, TOKEN_HOLDER_THRESHOLD_PERCENTAGE, TOKEN_LOCKERS_BASE, TOKEN_LOCKERS_MAINNET,
-    },
+    app_config::{TOKEN_HOLDER_THRESHOLD_PERCENTAGE, TOKEN_LOCKERS_BASE, TOKEN_LOCKERS_MAINNET},
     utils::type_conversion::{address_to_string, u256_to_f64},
 };
 
@@ -68,7 +66,8 @@ pub async fn get_token_holder_check(
 
     // Retrieve the token holders list using Moralis API.
     let token_address = address_to_string(token.address);
-    let top_holders: Vec<TokenHolders> = moralis::get_token_holder_list(&token_address).await?;
+    let top_holders: Vec<TokenHolders> =
+        moralis::get_token_holder_list(&token_address, &token.chain).await?;
 
     if top_holders.is_empty() {
         // No token holders found yet.
@@ -85,7 +84,7 @@ pub async fn get_token_holder_check(
         // Determine if the address is a known locked address.
         let mut is_burned_or_locked = false;
 
-        if CHAIN == Chain::Mainnet {
+        if token.chain == Chain::Mainnet {
             // On Mainnet, check against the main network's locked addresses.
             if TOKEN_LOCKERS_MAINNET.contains(&info.holder.as_str()) {
                 burnt_or_locked_balance += info.quantity;

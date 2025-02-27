@@ -75,7 +75,7 @@ pub struct TokenDex {
 pub async fn find_top_dex_pair_address_and_is_token_0(
     token_address: Address,
     client: &Arc<Provider<Ws>>,
-    chain: Chain,
+    chain: &Chain,
 ) -> anyhow::Result<Option<(Dex, Address, bool)>> {
     let mut top_dex: Option<Dex> = None;
     let mut top_pair_address = Address::zero();
@@ -113,7 +113,7 @@ pub async fn find_top_dex_pair_address_and_is_token_0(
 pub async fn is_token_listed_on_uniswap_v2(
     token_address: Address,
     client: &Arc<Provider<Ws>>,
-    chain: Chain,
+    chain: &Chain,
 ) -> anyhow::Result<Option<Address>> {
     // Retrieve configuration addresses from contracts.
     let uniswap_v2_factory_address: Address =
@@ -140,7 +140,7 @@ pub async fn is_token_listed_on_uniswap_v2(
 pub async fn is_token_listed_on_uniswap_v3(
     token_address: Address,
     client: &Arc<Provider<Ws>>,
-    chain: Chain,
+    chain: &Chain,
 ) -> anyhow::Result<Option<Address>> {
     // Retrieve configuration addresses from contracts
     let uniswap_v3_factory_address: Address =
@@ -175,7 +175,7 @@ pub async fn get_token_liquidity_and_is_token_0_on_(
     dex: &Dex,
     pair_address: Address,
     client: &Arc<Provider<Ws>>,
-    chain: Chain,
+    chain: &Chain,
 ) -> anyhow::Result<(u128, bool)> {
     match dex {
         Dex::UniswapV2 => {
@@ -197,7 +197,7 @@ pub async fn get_token_liquidity_and_is_token_0_on_(
 pub async fn get_liquidity_and_is_token_0_uniswap_v2(
     pair_address: Address,
     client: &Arc<Provider<Ws>>,
-    chain: Chain,
+    chain: &Chain,
 ) -> anyhow::Result<(u128, bool)> {
     let pool = UNISWAP_PAIR::new(pair_address, client.clone());
 
@@ -216,11 +216,7 @@ pub async fn get_liquidity_and_is_token_0_uniswap_v2(
         .map_err(|e| anyhow::anyhow!("Failed to get token1: {}", e))?;
 
     // Retrieve the WETH address from CHAIN_DATA
-    let weth_address: Address = CHAIN_DATA
-        .get_address(chain)
-        .weth
-        .parse()
-        .map_err(|e| anyhow::anyhow!("Failed to parse WETH address: {}", e))?;
+    let weth_address: Address = CHAIN_DATA.get_address(chain).weth.parse()?;
 
     // Determine which reserve corresponds to WETH
     let eth_reserve = if token0 == weth_address {
@@ -243,7 +239,7 @@ pub async fn get_liquidity_and_is_token_0_uniswap_v2(
 pub async fn get_liquidity_and_is_token_0_uniswap_v3(
     pool_address: Address,
     client: &Arc<Provider<Ws>>,
-    chain: Chain,
+    chain: &Chain,
 ) -> anyhow::Result<(u128, bool)> {
     // Initialize the Uniswap V3 Pool contract
     let pool = UNISWAP_V3_POOL::new(pool_address, client.clone());
@@ -261,11 +257,7 @@ pub async fn get_liquidity_and_is_token_0_uniswap_v3(
         .map_err(|e| anyhow::anyhow!("Failed to get token1: {}", e))?;
 
     // Retrieve the WETH address (assuming CHAIN_DATA provides it)
-    let weth_address: Address = CHAIN_DATA
-        .get_address(chain)
-        .weth
-        .parse()
-        .map_err(|e| anyhow::anyhow!("Failed to parse WETH address: {}", e))?;
+    let weth_address: Address = CHAIN_DATA.get_address(chain).weth.parse()?;
 
     // Determine which token is WETH
     let is_weth_token0 = token0 == weth_address;
@@ -285,6 +277,7 @@ pub async fn get_liquidity_and_is_token_0_uniswap_v3(
     // Get the WETH balance of the pool (reserve)
     let weth_balance = weth_contract
         .balance_of(pool_address)
+        .call()
         .await
         .map_err(|e| anyhow::anyhow!("Failed to get WETH balance: {}", e))?;
 

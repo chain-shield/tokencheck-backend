@@ -2,11 +2,10 @@
 //! and fee calculations.
 
 use crate::abi::uniswap_router_v2::UNISWAP_V2_ROUTER;
-use crate::app_config::CHAIN;
 use crate::data::chain_data::CHAIN_DATA;
 use anyhow::{anyhow, Context, Result};
 use ethers::core::k256::ecdsa::SigningKey;
-use ethers::types::{Address, Block, BlockNumber, H256, U256, U64};
+use ethers::types::{Address, Block, BlockNumber, Chain, H256, U256, U64};
 use ethers::{
     providers::{Middleware, Provider, Ws},
     signers::{LocalWallet, Signer, Wallet},
@@ -54,11 +53,12 @@ pub async fn get_amount_out_uniswap_v2(
     token_out: Address,
     amount_in: U256,
     slippage_tolerance: TxSlippage,
+    chain: &Chain,
     client: &Arc<Provider<Ws>>,
 ) -> anyhow::Result<U256> {
     // Parse the Uniswap V2 router address from the contract configuration.
     let uniswap_v2_router_address: Address = CHAIN_DATA
-        .get_address(CHAIN)
+        .get_address(chain)
         .uniswap_v2_router
         .parse()
         .context("Failed to parse Uniswap V2 router address")?;
@@ -89,10 +89,10 @@ pub async fn get_amount_out_uniswap_v2(
 ///
 /// # Errors
 /// Fails if the environment variable `PRIVATE_KEY` is not set or if the key parsing fails.
-pub fn get_wallet() -> anyhow::Result<Wallet<SigningKey>> {
+pub fn get_wallet(chain: &Chain) -> anyhow::Result<Wallet<SigningKey>> {
     // Retrieve PRIVATE_KEY from environment, providing context on failure.
     let private_key = env::var("PRIVATE_KEY").context("PRIVATE_KEY not found in .env file")?;
-    let wallet = LocalWallet::from_str(&private_key)?.with_chain_id(CHAIN);
+    let wallet = LocalWallet::from_str(&private_key)?.with_chain_id(*chain as u64);
     Ok(wallet)
 }
 
@@ -100,10 +100,10 @@ pub fn get_wallet() -> anyhow::Result<Wallet<SigningKey>> {
 ///
 /// # Errors
 /// Fails if the environment variable `PRIVATE_KEY_2` is not set or if the key parsing fails.
-pub fn get_test_wallet() -> anyhow::Result<Wallet<SigningKey>> {
+pub fn get_test_wallet(chain: &Chain) -> anyhow::Result<Wallet<SigningKey>> {
     // Retrieve PRIVATE_KEY_2 from environment, providing context on failure.
     let private_key = env::var("PRIVATE_KEY_2").context("PRIVATE_KEY_2 not found in .env file")?;
-    let wallet = LocalWallet::from_str(&private_key)?.with_chain_id(CHAIN);
+    let wallet = LocalWallet::from_str(&private_key)?.with_chain_id(*chain as u64);
     Ok(wallet)
 }
 

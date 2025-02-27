@@ -1,6 +1,6 @@
 use anyhow::Result;
 use chainshield_backend::abi::erc20::ERC20;
-use chainshield_backend::app_config::{AI_MODEL, CHAIN};
+use chainshield_backend::app_config::AI_MODEL;
 use chainshield_backend::data::chain_data::CHAIN_DATA;
 use chainshield_backend::data::dex::TokenDex;
 use chainshield_backend::data::token_data::{get_token_uniswap_v2_pair_address, ERC20Token};
@@ -10,7 +10,7 @@ use chainshield_backend::token_check::token_score::{
 };
 use dotenv::dotenv;
 use ethers::providers::{Provider, Ws};
-use ethers::types::Address;
+use ethers::types::{Address, Chain};
 use std::sync::Arc;
 
 // mainnet
@@ -39,7 +39,7 @@ pub struct SetupData {
 async fn test_generate_checklist_base() -> anyhow::Result<()> {
     const SCAM: &str = "0x9a301ad1ae2ba1ecf8693a60de92e834f4429e8c";
     const VIRTUALS: &str = "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b";
-    let data = setup(SCAM).await?;
+    let data = setup(SCAM, &Chain::Base).await?;
 
     let token_checklist = generate_token_checklist(data.token, &data.client).await?;
 
@@ -55,7 +55,7 @@ async fn test_generate_checklist_base() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_generate_checklist_mainnet() -> anyhow::Result<()> {
     for token in WHITELIST_TOKENS_MAINNET {
-        let data = setup(token).await?;
+        let data = setup(token, &Chain::Mainnet).await?;
 
         let token_checklist = generate_token_checklist(data.token, &data.client).await?;
 
@@ -73,9 +73,9 @@ async fn test_generate_checklist_mainnet() -> anyhow::Result<()> {
 }
 
 /// get ERC20Token - struct that contains all data we need - from token address
-pub async fn setup(token_address: &str) -> Result<SetupData> {
+pub async fn setup(token_address: &str, chain: &Chain) -> Result<SetupData> {
     dotenv().ok();
-    let ws_url = CHAIN_DATA.get_address(CHAIN).ws_url.clone();
+    let ws_url = CHAIN_DATA.get_address(&Chain::Mainnet).ws_url.clone();
     let provider = Provider::<Ws>::connect(ws_url).await?;
     let client = Arc::new(provider.clone());
 
@@ -90,7 +90,7 @@ pub async fn setup(token_address: &str) -> Result<SetupData> {
     // get pair address of token, and is_token_0 , true if token is token_0, otherwise its token_1
     println!("get pair address..");
     let (pair_address, is_token_0) =
-        get_token_uniswap_v2_pair_address(token_address_h160, &client).await?;
+        get_token_uniswap_v2_pair_address(token_address_h160, chain, &client).await?;
 
     let token = ERC20Token {
         name,

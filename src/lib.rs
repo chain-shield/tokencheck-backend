@@ -40,7 +40,11 @@ pub mod token_check {
     pub mod external_api {
         pub mod etherscan_api;
         pub mod moralis;
-        pub mod thegraph_api;
+        pub mod thegraph {
+            pub mod shared;
+            pub mod uniswap_v2;
+            pub mod uniswap_v3;
+        }
     }
     pub mod anvil {
         pub mod buy_sell;
