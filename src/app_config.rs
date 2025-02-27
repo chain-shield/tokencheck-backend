@@ -27,7 +27,7 @@ pub const DEXES: [Dex; 2] = [Dex::UniswapV2, Dex::UniswapV3];
 
 /// Specifies the blockchain chain where the application operates.
 /// Adjust this value to target a different chain (e.g., Mainnet, Testnet).
-pub const CHAIN: Chain = Chain::Mainnet;
+// pub const CHAIN: Chain = Chain::Mainnet;
 
 /// Defines the mode in which the application runs.
 /// Use `AppMode::Production` for live environments or `AppMode::Simulation` for testing.

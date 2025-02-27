@@ -9,7 +9,6 @@ use crate::token_check::external_api::etherscan_api::{get_source_code, TokenWebD
 use crate::token_check::token_holder_check::TokenHolderCheck;
 use crate::utils::type_conversion::address_to_string;
 use ethers::providers::{Provider, Ws};
-use std::default;
 use std::sync::Arc;
 
 ///! This module implements token checking functionality to evaluate the
@@ -88,7 +87,7 @@ pub async fn generate_token_checklist(
 
     // Step 1: Retrieve token source code.
     println!("1. grabbing source code..");
-    let token_code = get_source_code(&token_address).await?;
+    let token_code = get_source_code(&token_address, &token.chain).await?;
 
     // Step 2: Analyze the token's source code using an AI model.
     println!("2. checking source code..");
@@ -110,7 +109,7 @@ pub async fn generate_token_checklist(
 
     // Step 5: Check for online presence details of the token.
     println!("5. getting online presence...");
-    let token_online_presense = match moralis::get_token_info(&token_address).await? {
+    let token_online_presense = match moralis::get_token_info(&token_address, &token.chain).await? {
         Some(online_presense) => online_presense,
         None => TokenWebData::default(),
     };

@@ -2,14 +2,12 @@
 //! This module initializes the environment, logger, and performs token checking for tokens in the mainnet whitelist.
 //! It demonstrates a test run where token data is fetched, token checklists are generated, and token scores are calculated using both rule-based and AI-based methods.
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use chainshield_backend::{
-    abi::erc20::ERC20,
-    app_config::{AI_MODEL, CHAIN},
+    app_config::AI_MODEL,
     data::{
-        chain_data::CHAIN_DATA,
-        dex::TokenDex,
-        token_data::{get_token_uniswap_v2_pair_address, ERC20Token},
+        provider_manager::get_chain_provider, token_checklist_cache::get_token_checklist,
+        token_data::get_core_token_data_by_address,
     },
     token_check::{
         token_checklist::generate_token_checklist,
@@ -18,12 +16,8 @@ use chainshield_backend::{
     utils::logging::setup_logger,
 };
 use dotenv::dotenv;
-use ethers::{
-    providers::{Provider, Ws},
-    types::Address,
-};
+use ethers::types::Address;
 use log::info;
-use std::sync::Arc;
 
 /// Whitelist tokens for mainnet testing.
 pub const WHITELIST_TOKENS_MAINNET: [&str; 3] = [
@@ -32,12 +26,6 @@ pub const WHITELIST_TOKENS_MAINNET: [&str; 3] = [
     // "0x1151CB3d861920e07a38e03eEAd12C32178567F6",
     "0xcf0C122c6b73ff809C693DB761e7BaeBe62b6a2E",
 ];
-
-/// Structure to hold setup data including the blockchain provider client and token information.
-pub struct SetupData {
-    client: Arc<Provider<Ws>>,
-    pub token: ERC20Token,
-}
 
 /// Main function that iterates over tokens, performs token checks, and prints token scores using both rule-based and AI-based approaches.
 ///
@@ -50,16 +38,31 @@ async fn main() -> Result<()> {
 
     // THIS IS FOR TESTING PURPOSES - WILL BE REPLACED BY SERVER CODE
     for token in WHITELIST_TOKENS_MAINNET {
-        // Set up blockchain client and token data for the given token address
-        let data = setup(token).await?;
+        let token_address: Address = token.parse()?;
 
-        // Generate token checklist using the fetched token data and client
-        let token_checklist = generate_token_checklist(data.token, &data.client).await?;
+        let token_checklist = match get_token_checklist(token_address).await {
+            Some(checklist) => checklist,
+            None => {
+                if let Some(token_data) = get_core_token_data_by_address(&token).await? {
+                    let client = get_chain_provider(&token_data.chain).await?;
+                    let checklist = generate_token_checklist(token_data, &client).await?;
+                    checklist
+                } else {
+                    return Err(anyhow!(
+                        "could not get token data, address may not be valid"
+                    ));
+                }
+            }
+        };
 
         info!("token checklist => {:#?}", token_checklist);
 
+        // TODO - SAVE TOKEN CHECKLIST TO CACHE
+
         // Calculate token score based on predefined rules
         let token_score = get_token_score_with_rules_based_approch(token_checklist.clone());
+
+        // TODO - CREATE CACHE FOR TOKEN SCORE AND SAVE SCORE TO CACHE
 
         info!("token score (rule based) => {:#?}", token_score);
 
@@ -69,50 +72,4 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
-}
-
-/// Sets up the environment for an ERC20 token given its address.
-///
-/// # Parameters
-/// - `token_address`: A string slice representing the token's address.
-///
-/// # Returns
-/// - A `SetupData` struct containing the initialized provider and token data.
-///
-/// # Errors
-/// Returns an error if any step in the initialization (e.g., connecting to the provider, parsing addresses, or fetching data) fails.
-pub async fn setup(token_address: &str) -> Result<SetupData> {
-    dotenv().ok();
-    let ws_url = CHAIN_DATA.get_address(CHAIN).ws_url.clone();
-    let provider = Provider::<Ws>::connect(ws_url).await?;
-    let client = Arc::new(provider.clone());
-
-    // Parse the token address from string to Address type
-    let token_address_h160: Address = token_address.parse()?;
-    let token_contract = ERC20::new(token_address_h160, client.clone());
-
-    // Get basic token data (symbol, decimals, name) from the ERC20 contract
-    let symbol = token_contract.symbol().call().await?;
-    let decimals = token_contract.decimals().call().await?;
-    let name = token_contract.name().call().await?;
-
-    // Retrieve the pair address and determine if the token is token_0 in the pair
-    println!("get pair address..");
-    let (pair_address, is_token_0) =
-        get_token_uniswap_v2_pair_address(token_address_h160, &client).await?;
-
-    let token = ERC20Token {
-        name,
-        symbol,
-        decimals,
-        address: token_address_h160,
-        token_dex: TokenDex {
-            pair_or_pool_address: pair_address,
-            is_token_0,
-            ..Default::default()
-        },
-        ..Default::default()
-    };
-
-    Ok(SetupData { client, token })
 }

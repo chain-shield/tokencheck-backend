@@ -75,7 +75,7 @@ pub struct TokenDex {
 pub async fn find_top_dex_pair_address_and_is_token_0(
     token_address: Address,
     client: &Arc<Provider<Ws>>,
-    chain: Chain,
+    chain: &Chain,
 ) -> anyhow::Result<Option<(Dex, Address, bool)>> {
     let mut top_dex: Option<Dex> = None;
     let mut top_pair_address = Address::zero();
@@ -113,7 +113,7 @@ pub async fn find_top_dex_pair_address_and_is_token_0(
 pub async fn is_token_listed_on_uniswap_v2(
     token_address: Address,
     client: &Arc<Provider<Ws>>,
-    chain: Chain,
+    chain: &Chain,
 ) -> anyhow::Result<Option<Address>> {
     // Retrieve configuration addresses from contracts.
     let uniswap_v2_factory_address: Address =
@@ -140,7 +140,7 @@ pub async fn is_token_listed_on_uniswap_v2(
 pub async fn is_token_listed_on_uniswap_v3(
     token_address: Address,
     client: &Arc<Provider<Ws>>,
-    chain: Chain,
+    chain: &Chain,
 ) -> anyhow::Result<Option<Address>> {
     // Retrieve configuration addresses from contracts
     let uniswap_v3_factory_address: Address =
@@ -175,7 +175,7 @@ pub async fn get_token_liquidity_and_is_token_0_on_(
     dex: &Dex,
     pair_address: Address,
     client: &Arc<Provider<Ws>>,
-    chain: Chain,
+    chain: &Chain,
 ) -> anyhow::Result<(u128, bool)> {
     match dex {
         Dex::UniswapV2 => {
@@ -197,7 +197,7 @@ pub async fn get_token_liquidity_and_is_token_0_on_(
 pub async fn get_liquidity_and_is_token_0_uniswap_v2(
     pair_address: Address,
     client: &Arc<Provider<Ws>>,
-    chain: Chain,
+    chain: &Chain,
 ) -> anyhow::Result<(u128, bool)> {
     let pool = UNISWAP_PAIR::new(pair_address, client.clone());
 
@@ -243,7 +243,7 @@ pub async fn get_liquidity_and_is_token_0_uniswap_v2(
 pub async fn get_liquidity_and_is_token_0_uniswap_v3(
     pool_address: Address,
     client: &Arc<Provider<Ws>>,
-    chain: Chain,
+    chain: &Chain,
 ) -> anyhow::Result<(u128, bool)> {
     // Initialize the Uniswap V3 Pool contract
     let pool = UNISWAP_V3_POOL::new(pool_address, client.clone());

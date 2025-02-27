@@ -17,9 +17,8 @@ use anyhow::anyhow;
 use ethers::types::{Chain, U256};
 use serde::{de::DeserializeOwned, Deserialize};
 
-use crate::{
-    app_config::CHAIN,
-    token_check::{check_token_lock::TokenHolders, external_api::etherscan_api::TokenWebData},
+use crate::token_check::{
+    check_token_lock::TokenHolders, external_api::etherscan_api::TokenWebData,
 };
 
 /// Defines the type of API call for the Moralis endpoint.
@@ -140,10 +139,16 @@ pub struct Links {
 /// # Errors
 ///
 /// Returns an error if the API call fails or the token balance parsing fails.
-pub async fn get_token_holder_list(token_address: &str) -> anyhow::Result<Vec<TokenHolders>> {
-    let token_holders =
-        moralis_api_call::<MoralisTokenHolder>(token_address, MoralisApiCallType::GetTokenHolders)
-            .await?;
+pub async fn get_token_holder_list(
+    token_address: &str,
+    chain: &Chain,
+) -> anyhow::Result<Vec<TokenHolders>> {
+    let token_holders = moralis_api_call::<MoralisTokenHolder>(
+        token_address,
+        MoralisApiCallType::GetTokenHolders,
+        chain,
+    )
+    .await?;
     // Convert API response into Vec<TokenHolders>
     let mut holders = Vec::with_capacity(token_holders.len());
     for entry in token_holders {
@@ -172,10 +177,14 @@ pub async fn get_token_holder_list(token_address: &str) -> anyhow::Result<Vec<To
 ///
 /// * `anyhow::Result<Option<TokenWebData>>` - On success, returns an Option with token information;
 ///   if no metadata is found, returns `None`.
-pub async fn get_token_info(token_address: &str) -> anyhow::Result<Option<TokenWebData>> {
+pub async fn get_token_info(
+    token_address: &str,
+    chain: &Chain,
+) -> anyhow::Result<Option<TokenWebData>> {
     let token_metadata = moralis_api_call::<MoralisTokenMetadata>(
         token_address,
         MoralisApiCallType::GetTokenMetaData,
+        chain,
     )
     .await?;
 
@@ -216,6 +225,7 @@ pub async fn get_token_info(token_address: &str) -> anyhow::Result<Option<TokenW
 pub async fn moralis_api_call<T>(
     token_address: &str,
     api_call_type: MoralisApiCallType,
+    chain: &Chain,
 ) -> anyhow::Result<Vec<T>>
 where
     T: DeserializeOwned + Debug,
@@ -223,7 +233,7 @@ where
     // Retrieve the API key and base URL from environment variables.
     let api_key = get_moralis_api_key()?;
     let root_url = get_moralis_api()?;
-    let chain_id = get_moralis_chain_id();
+    let chain_id = get_moralis_chain_id(chain);
 
     // Construct the URL based on the type of API call.
     let url = match api_call_type {
@@ -303,8 +313,8 @@ where
 /// # Returns
 ///
 /// A `String` representing the chain id (`"base"` for `Chain::Base`, or `"eth"` otherwise).
-pub fn get_moralis_chain_id() -> String {
-    match CHAIN {
+pub fn get_moralis_chain_id(chain: &Chain) -> String {
+    match chain {
         Chain::Base => "base".to_string(),
         _ => "eth".to_string(),
     }

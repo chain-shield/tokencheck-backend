@@ -4,7 +4,7 @@
 use crate::abi::erc20::ERC20;
 use crate::abi::uniswap_factory_v2::UNISWAP_V2_FACTORY;
 use crate::abi::uniswap_pair::UNISWAP_PAIR;
-use crate::app_config::{CHAIN, CHAINS};
+use crate::app_config::CHAINS;
 use crate::data::dex::find_top_dex_pair_address_and_is_token_0;
 use anyhow::{anyhow, Result};
 use ethers::contract::ContractError;
@@ -80,7 +80,7 @@ pub async fn get_core_token_data_by_address(token_address: &str) -> Result<Optio
     let token_contract = ERC20::new(token_address_h160, provider.clone());
 
     let token_dex =
-        match find_top_dex_pair_address_and_is_token_0(token_address_h160, &provider, token_chain)
+        match find_top_dex_pair_address_and_is_token_0(token_address_h160, &provider, &token_chain)
             .await?
         {
             Some((dex, pair_address, is_token_0)) => TokenDex {
@@ -141,12 +141,13 @@ pub async fn get_core_token_data_by_address(token_address: &str) -> Result<Optio
 /// ```
 pub async fn get_token_uniswap_v2_pair_address(
     token_address: Address,
+    chain: &Chain,
     client: &Arc<Provider<Ws>>,
 ) -> anyhow::Result<(Address, bool)> {
     // Retrieve configuration addresses from contracts.
     let uniswap_v2_factory_address: Address =
-        CHAIN_DATA.get_address(CHAIN).uniswap_v2_factory.parse()?;
-    let weth_address: Address = CHAIN_DATA.get_address(CHAIN).weth.parse()?;
+        CHAIN_DATA.get_address(chain).uniswap_v2_factory.parse()?;
+    let weth_address: Address = CHAIN_DATA.get_address(chain).weth.parse()?;
 
     // Initialize the Uniswap V2 factory contract to query for pair data.
     let uniswap_factory = UNISWAP_V2_FACTORY::new(uniswap_v2_factory_address, client.clone());

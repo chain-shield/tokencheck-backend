@@ -6,15 +6,12 @@
 //! Make sure to set the environment variables `ETHERSCAN_API_KEY` and `ETHERSCAN_API` before using these functions.
 
 use anyhow::{anyhow, Result};
-use ethers::types::{Address, U256};
+use ethers::types::{Address, Chain, U256};
 use log::warn;
 use reqwest::Client;
 use serde::Deserialize;
 
-use crate::{
-    app_config::CHAIN,
-    utils::type_conversion::{address_to_string, string_to_bool},
-};
+use crate::utils::type_conversion::{address_to_string, string_to_bool};
 
 use crate::token_check::check_token_lock::TokenHolders;
 
@@ -212,13 +209,16 @@ pub struct TokenWebData {
 /// - The HTTP request fails.
 /// - The API returns a non-success status.
 /// - The JSON response cannot be parsed correctly.
-pub async fn get_token_holder_list(contract_address: Address) -> Result<Vec<TokenHolders>> {
+pub async fn get_token_holder_list(
+    contract_address: Address,
+    chain: &Chain,
+) -> Result<Vec<TokenHolders>> {
     // Retrieve the necessary API key and convert the contract address to a string.
     let etherscan_api_key = get_etherscan_api_key()?;
     let contract_address_str = address_to_string(contract_address);
 
     // Get chain id from application configuration.
-    let chain_id = CHAIN as u64;
+    let chain_id = *chain as u64;
     let etherscan_api = get_etherscan_api()?;
 
     // Build the Etherscan URL for fetching token holders.
@@ -280,10 +280,10 @@ pub async fn get_token_holder_list(contract_address: Address) -> Result<Vec<Toke
 /// - The HTTP request fails.
 /// - The API returns a non-success status.
 /// - The JSON response cannot be parsed.
-pub async fn get_source_code(contract_address: &str) -> Result<String> {
+pub async fn get_source_code(contract_address: &str, chain: &Chain) -> Result<String> {
     let etherscan_api_key = get_etherscan_api_key()?;
 
-    let chain_id = CHAIN as u64;
+    let chain_id = *chain as u64;
     let etherscan_api = get_etherscan_api()?;
 
     // Build the URL for fetching the contract source code.
@@ -341,10 +341,10 @@ address={}&apikey={}",
 /// - The HTTP request fails.
 /// - The API returns a non-success status.
 /// - The JSON response cannot be parsed.
-pub async fn get_contract_owner(contract_address: &str) -> Result<Option<String>> {
+pub async fn get_contract_owner(contract_address: &str, chain: &Chain) -> Result<Option<String>> {
     let etherscan_api_key = get_etherscan_api_key()?;
 
-    let chain_id = CHAIN as u64;
+    let chain_id = *chain as u64;
     let etherscan_api = get_etherscan_api()?;
 
     // Build the URL for fetching the contract owner.
@@ -411,10 +411,10 @@ contractaddresses={}&apikey={}",
 /// - The HTTP request fails.
 /// - The API returns a non-success status.
 /// - The JSON response cannot be fully parsed.
-pub async fn get_token_info(contract_address: &str) -> Result<Option<TokenWebData>> {
+pub async fn get_token_info(contract_address: &str, chain: &Chain) -> Result<Option<TokenWebData>> {
     let etherscan_api_key = get_etherscan_api_key()?;
 
-    let chain_id = CHAIN as u64;
+    let chain_id = *chain as u64;
     let etherscan_api = get_etherscan_api()?;
 
     // Build the URL for fetching token info.

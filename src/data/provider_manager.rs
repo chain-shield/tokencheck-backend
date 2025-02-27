@@ -16,7 +16,7 @@ pub static PROVIDERS_HASH: Lazy<Arc<HashMap<Chain, Provider<Ws>>>> = Lazy::new(|
     runtime.block_on(async {
         let mut provider_hash = HashMap::<Chain, Provider<Ws>>::new();
         for chain in CHAINS {
-            let ws_url = CHAIN_DATA.get_address(chain).ws_url.clone();
+            let ws_url = CHAIN_DATA.get_address(&chain).ws_url.clone();
             match Provider::<Ws>::connect(ws_url).await {
                 Ok(provider) => {
                     provider_hash.insert(chain, provider);

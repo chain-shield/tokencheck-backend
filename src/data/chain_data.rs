@@ -97,8 +97,8 @@ impl ContractAddressMap {
     /// # Panics
     ///
     /// Panics if the current chain is not supported (i.e., missing from the addresses mapping).
-    pub fn get_address(&self, chain: Chain) -> &ContractAddresses {
-        self.addresses.get(&chain).expect("Chain not supported")
+    pub fn get_address(&self, chain: &Chain) -> &ContractAddresses {
+        self.addresses.get(chain).expect("Chain not supported")
     }
 }
 

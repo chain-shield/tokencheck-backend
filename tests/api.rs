@@ -2,6 +2,7 @@ use chainshield_backend::token_check::external_api::etherscan_api::{
     get_source_code, EtherscanResponse, TokenInfo,
 };
 use dotenv::dotenv;
+use ethers::types::Chain;
 
 // TEST ON BASE
 #[tokio::test]
@@ -10,7 +11,7 @@ async fn test_etherscan_api() -> anyhow::Result<()> {
     dotenv().ok();
     const VIRTUALS: &str = "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b";
 
-    let source_code = get_source_code(VIRTUALS).await?;
+    let source_code = get_source_code(VIRTUALS, &Chain::Base).await?;
     println!("source code => {}", source_code);
 
     assert!(!source_code.is_empty());
@@ -25,7 +26,7 @@ async fn test_etherscan_api_2() -> anyhow::Result<()> {
     dotenv().ok();
     const QUALIFY_USER: &str = "0x5F0604C368B433e829905dFcB14f23B6f077e885";
 
-    let source_code = get_source_code(QUALIFY_USER).await?;
+    let source_code = get_source_code(QUALIFY_USER, &Chain::Mainnet).await?;
 
     println!("source code => {}", source_code);
 

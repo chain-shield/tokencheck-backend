@@ -7,7 +7,7 @@ use ethers::prelude::*;
 use std::sync::Arc;
 
 use crate::{
-    app_config::{CHAIN, TOKEN_LOCKERS_BASE, TOKEN_LOCKERS_MAINNET},
+    app_config::{TOKEN_LOCKERS_BASE, TOKEN_LOCKERS_MAINNET},
     token_check::external_api::{
         etherscan_api::get_token_holder_list, thegraph_api::fetch_uniswap_lp_holders,
     },
@@ -74,9 +74,9 @@ pub async fn is_liquidity_locked(
 
     // Retrieve the list of top liquidity providers from an external API.
     // Uses different implementations based on the chain configuration.
-    let top_holders: Vec<TokenHolders> = if CHAIN == Chain::Base {
+    let top_holders: Vec<TokenHolders> = if token.chain == Chain::Base {
         // For Base chain, use the Etherscan API.
-        get_token_holder_list(token.token_dex.pair_or_pool_address).await?
+        get_token_holder_list(token.token_dex.pair_or_pool_address, &token.chain).await?
     } else {
         // For other chains (e.g., Mainnet), use the The Graph API.
         fetch_uniswap_lp_holders(token.token_dex.pair_or_pool_address).await?
@@ -99,7 +99,7 @@ pub async fn is_liquidity_locked(
         }
 
         // Depending on the chain, sum up balances from all known locker addresses.
-        if CHAIN == Chain::Mainnet {
+        if token.chain == Chain::Mainnet {
             if TOKEN_LOCKERS_MAINNET.contains(&info.holder.as_str()) {
                 locked_balance = locked_balance + info.quantity;
             }
