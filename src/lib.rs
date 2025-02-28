@@ -12,6 +12,12 @@ pub mod abi {
     pub mod uniswap_v3_router;
 }
 
+pub mod shield_server {
+    pub mod database;
+    pub mod logger;
+    pub mod models;
+}
+
 pub mod data {
     pub mod chain_data;
     pub mod dex;
