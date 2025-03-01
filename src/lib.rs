@@ -53,7 +53,8 @@ pub mod token_check {
         }
     }
     pub mod anvil {
-        pub mod buy_sell;
+        pub mod buy_sell_uniswap_v2;
+        pub mod buy_sell_uniswap_v3;
         pub mod simlator;
         pub mod supporting_methods;
         pub mod tx_trait;

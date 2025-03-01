@@ -1,4 +1,5 @@
 use crate::data::chain_data::CHAIN_DATA;
+use crate::data::dex::Dex;
 use crate::data::token_data::ERC20Token;
 use crate::token_check::anvil::simlator::AnvilTestSimulator;
 use crate::token_check::anvil::tx_trait::Txs;
@@ -48,7 +49,19 @@ impl ERC20Token {
         println!("validating token...");
 
         // Attempt to buy the token using the anvil simulator.
-        let buy_result = anvil.simulate_buying_token_for_weth(self).await;
+        let buy_result = match self.token_dex.dex {
+            Dex::UniswapV2 => {
+                anvil
+                    .simulate_buying_token_on_uniswap_v2_for_weth(self)
+                    .await
+            }
+            Dex::UniswapV3 => {
+                anvil
+                    .simulate_buying_token_on_uniswap_v3_for_weth(self)
+                    .await
+            }
+            _ => return Ok(TokenStatus::CannotBuy),
+        };
 
         if let Err(err) = buy_result {
             error!("Buy transaction failed with error: {:?}", err);
@@ -104,7 +117,21 @@ impl ERC20Token {
 
         // Attempt to sell the token.
         println!("simulate selling token for validation");
-        let sell_result = anvil.simulate_selling_token_for_weth(self).await;
+        // Attempt to buy the token using the anvil simulator.
+        let sell_result = match self.token_dex.dex {
+            Dex::UniswapV2 => {
+                anvil
+                    .simulate_selling_token_on_uniswap_v2_for_weth(self)
+                    .await
+            }
+            Dex::UniswapV3 => {
+                anvil
+                    .simulate_selling_token_on_uniswap_v3_for_weth(self)
+                    .await
+            }
+            _ => return Ok(TokenStatus::CannotBuy),
+        };
+
         match sell_result {
             Ok(_) => {
                 // After a successful sell, ensure that the token balance becomes zero.
