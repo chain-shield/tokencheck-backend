@@ -6,9 +6,11 @@ use crate::abi::uniswap_v3_factory::UNISWAP_V3_FACTORY;
 use crate::app_config::DEXES;
 use ethers::providers::{Provider, Ws};
 use ethers::types::{Address, Chain};
+use log::debug;
 use std::sync::Arc;
 
 use super::chain_data::CHAIN_DATA;
+pub const UNISWAP_V2_FEE: u32 = 3000;
 
 // list of dexes
 #[derive(Clone, Default, Debug)]
@@ -70,41 +72,50 @@ pub struct TokenDex {
     /// A flag indicating whether the token is the first token (token_0)
     /// in the Uniswap pair; if false the token is token_1.
     pub is_token_0: bool,
+    pub fee: u32,
 }
 
-pub async fn find_top_dex_pair_address_and_is_token_0(
+pub async fn find_top_dex_pair_address_is_token_0_and_fee(
     token_address: Address,
     client: &Arc<Provider<Ws>>,
     chain: &Chain,
-) -> anyhow::Result<Option<(Dex, Address, bool)>> {
+) -> anyhow::Result<Option<(Dex, Address, bool, u32)>> {
     let mut top_dex: Option<Dex> = None;
+    let mut top_fee = 0u32;
     let mut top_pair_address = Address::zero();
     let mut is_token_0 = false;
     let mut top_dex_liquidity = 0;
 
     // loop through L1,L2 clients to find which chain token is from
     for dex in DEXES {
-        let dex_pair_address = match dex {
+        let dex_pair_address_plus_fee = match dex {
             Dex::UniswapV2 => is_token_listed_on_uniswap_v2(token_address, client, chain).await?,
             Dex::UniswapV3 => is_token_listed_on_uniswap_v3(token_address, client, chain).await?,
             _ => None,
         };
 
-        if let Some(pair_address) = dex_pair_address {
+        if let Some((pair_address, fee)) = dex_pair_address_plus_fee {
             // check liquidity of token on dex
             let (liquidity, token_0) =
                 get_token_liquidity_and_is_token_0_on_(&dex, pair_address, client, chain).await?;
+
             if liquidity > top_dex_liquidity {
                 top_dex_liquidity = liquidity;
                 top_dex = Some(dex.clone());
                 is_token_0 = token_0;
                 top_pair_address = pair_address;
+                top_fee = fee;
             }
         }
     }
 
     if let Some(top_dex_unwrapped) = top_dex {
-        Ok(Some((top_dex_unwrapped, top_pair_address, is_token_0)))
+        Ok(Some((
+            top_dex_unwrapped,
+            top_pair_address,
+            is_token_0,
+            top_fee,
+        )))
     } else {
         Ok(None)
     }
@@ -114,7 +125,7 @@ pub async fn is_token_listed_on_uniswap_v2(
     token_address: Address,
     client: &Arc<Provider<Ws>>,
     chain: &Chain,
-) -> anyhow::Result<Option<Address>> {
+) -> anyhow::Result<Option<(Address, u32)>> {
     // Retrieve configuration addresses from contracts.
     let uniswap_v2_factory_address: Address =
         CHAIN_DATA.get_address(chain).uniswap_v2_factory.parse()?;
@@ -131,7 +142,7 @@ pub async fn is_token_listed_on_uniswap_v2(
 
     // Return true if a pair exists (non-zero address), false otherwise
     if pair_address != Address::zero() {
-        Ok(Some(pair_address))
+        Ok(Some((pair_address, UNISWAP_V2_FEE)))
     } else {
         Ok(None)
     }
@@ -141,7 +152,7 @@ pub async fn is_token_listed_on_uniswap_v3(
     token_address: Address,
     client: &Arc<Provider<Ws>>,
     chain: &Chain,
-) -> anyhow::Result<Option<Address>> {
+) -> anyhow::Result<Option<(Address, u32)>> {
     // Retrieve configuration addresses from contracts
     let uniswap_v3_factory_address: Address =
         CHAIN_DATA.get_address(chain).uniswap_v3_factory.parse()?;
@@ -153,7 +164,11 @@ pub async fn is_token_listed_on_uniswap_v3(
     // Common Uniswap V3 fee tiers
     let fee_tiers = vec![500, 3000, 10000];
 
-    // Check each fee tier for an existing pool
+    let mut most_liquidity = 0_u128;
+    let mut high_liquidity_fee_teir = 3000; // 3000 as default
+    let mut highest_liquidity_pool = Address::zero();
+
+    // Check each fee tier for an existing pool, and which  has highest liquidity
     for fee in fee_tiers {
         let pool_address = uniswap_factory
             .get_pool(token_address, weth_address, fee)
@@ -163,12 +178,29 @@ pub async fn is_token_listed_on_uniswap_v3(
             })?;
 
         if pool_address != Address::zero() {
-            return Ok(Some(pool_address)); // Pool found at this fee tier
+            // check liquidity of pool
+            let (liquidity, _) = get_token_liquidity_and_is_token_0_on_(
+                &Dex::UniswapV3,
+                pool_address,
+                client,
+                chain,
+            )
+            .await?;
+
+            if liquidity > most_liquidity {
+                most_liquidity = liquidity;
+                high_liquidity_fee_teir = fee;
+                highest_liquidity_pool = pool_address;
+            }
         }
     }
 
-    // No pools found across all fee tiers
-    Ok(None)
+    if highest_liquidity_pool != Address::zero() {
+        return Ok(Some((highest_liquidity_pool, high_liquidity_fee_teir)));
+    } else {
+        // No pools found across all fee tiers
+        Ok(None)
+    }
 }
 
 pub async fn get_token_liquidity_and_is_token_0_on_(
@@ -181,11 +213,13 @@ pub async fn get_token_liquidity_and_is_token_0_on_(
         Dex::UniswapV2 => {
             let (liquidity, is_token_0) =
                 get_liquidity_and_is_token_0_uniswap_v2(pair_address, client, chain).await?;
+            debug!("liquidity for uniswap v2 => {}", liquidity);
             return Ok((liquidity, is_token_0));
         }
         Dex::UniswapV3 => {
             let (liquidity, is_token_0) =
                 get_liquidity_and_is_token_0_uniswap_v3(pair_address, client, chain).await?;
+            debug!("liquidity for uniswap v3 => {}", liquidity);
             return Ok((liquidity, is_token_0));
         }
         _ => {}

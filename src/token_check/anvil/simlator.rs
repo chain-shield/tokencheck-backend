@@ -68,7 +68,7 @@ impl AnvilTestSimulator {
     /// ```
     pub async fn new(rpc_url: &str, chain: &Chain) -> Result<Self> {
         // Configure and spawn a new Anvil instance, forking from the provided Geth node URL.
-        println!("creating forked anvil note");
+        println!("creating forked anvil node");
         let anvil = Anvil::new()
             // Optionally add extra arguments or configuration options as needed.
             // .args(["--no-storage-caching", "--code-size-limit", "2048"])

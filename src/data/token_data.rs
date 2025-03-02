@@ -5,12 +5,12 @@ use crate::abi::erc20::ERC20;
 use crate::abi::uniswap_factory_v2::UNISWAP_V2_FACTORY;
 use crate::abi::uniswap_pair::UNISWAP_PAIR;
 use crate::app_config::CHAINS;
-use crate::data::dex::find_top_dex_pair_address_and_is_token_0;
+use crate::data::dex::find_top_dex_pair_address_is_token_0_and_fee;
 use anyhow::{anyhow, Result};
 use ethers::contract::ContractError;
 use ethers::providers::{Provider, ProviderError, Ws};
 use ethers::types::{Address, Chain};
-use log::{error, info};
+use log::{debug, error, info};
 use std::sync::Arc;
 
 use super::chain_data::CHAIN_DATA;
@@ -61,6 +61,7 @@ pub async fn get_core_token_data_by_address(token_address: &str) -> Result<Optio
     info!("Setting up token contract...");
 
     // Parse the token address from a string to an Address.
+    info!("checking token address is vaild....");
     let token_address_h160: Address = match token_address.parse() {
         Ok(address) => address,
         Err(_) => {
@@ -69,6 +70,7 @@ pub async fn get_core_token_data_by_address(token_address: &str) -> Result<Optio
         }
     };
 
+    info!("finding which chain token is from...");
     let token_chain = match find_chain_token_is_from(token_address_h160).await? {
         Some(chain) => chain,
         None => {
@@ -76,22 +78,30 @@ pub async fn get_core_token_data_by_address(token_address: &str) -> Result<Optio
             return Ok(None);
         }
     };
+    info!("token chain is {}", token_chain);
+
     let provider = get_chain_provider(&token_chain).await?;
     let token_contract = ERC20::new(token_address_h160, provider.clone());
 
-    let token_dex =
-        match find_top_dex_pair_address_and_is_token_0(token_address_h160, &provider, &token_chain)
-            .await?
-        {
-            Some((dex, pair_address, is_token_0)) => TokenDex {
-                dex,
-                pair_or_pool_address: pair_address,
-                is_token_0,
-            },
-            None => TokenDex::default(), // pair address will be Address(0)
-        };
+    info!("find which dex token is listed on that has highest liquidity...");
+    let token_dex = match find_top_dex_pair_address_is_token_0_and_fee(
+        token_address_h160,
+        &provider,
+        &token_chain,
+    )
+    .await?
+    {
+        Some((dex, pair_address, is_token_0, fee)) => TokenDex {
+            dex,
+            pair_or_pool_address: pair_address,
+            is_token_0,
+            fee,
+        },
+        None => TokenDex::default(), // pair address will be Address(0)
+    };
 
-    let is_listed_on_dex = token_dex.pair_or_pool_address == Address::zero();
+    debug!("token_dex => {:?}", token_dex);
+    let is_listed_on_dex = token_dex.pair_or_pool_address != Address::zero();
 
     // Fetch the basic token data (name, symbol, decimals) from the ERC20 contract.
     info!("Getting basic token info...");
@@ -169,6 +179,7 @@ pub async fn get_token_uniswap_v2_pair_address(
 pub async fn find_chain_token_is_from(token_address: Address) -> anyhow::Result<Option<Chain>> {
     // loop through L1,L2 clients to find which chain token is from
     for chain in CHAINS {
+        info!("connecting to chain {}", chain);
         let chain_provider = get_chain_provider(&chain).await?;
         let token_contract = ERC20::new(token_address, chain_provider);
         // Check multiple ERC20 methods to confirm the token's presence
@@ -199,9 +210,6 @@ pub async fn find_chain_token_is_from(token_address: Address) -> anyhow::Result<
 
         // If all calls succeed, we’ve found the chain
         if name_result.is_ok() && symbol_result.is_ok() && supply_result.is_ok() {
-            if let Ok(name) = name_result {
-                println!("Token found with name: {}", name);
-            }
             return Ok(Some(chain));
         }
     }

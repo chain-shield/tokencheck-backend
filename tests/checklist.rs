@@ -13,15 +13,14 @@ use ethers::types::Address;
 use log::info;
 
 /// Whitelist tokens for mainnet testing.
-pub const WHITELIST_TOKENS_MAINNET: [&str; 3] = [
+pub const WHITELIST_TOKENS_MAINNET: [&str; 4] = [
     "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE",
     "0x6982508145454Ce325dDbE47a25d4ec3d2311933",
-    // "0x1151CB3d861920e07a38e03eEAd12C32178567F6",
+    "0x1151CB3d861920e07a38e03eEAd12C32178567F6",
     "0xcf0C122c6b73ff809C693DB761e7BaeBe62b6a2E",
 ];
 
 #[tokio::test]
-#[ignore]
 async fn test_checklist_and_token_score_generation() -> anyhow::Result<()> {
     dotenv().ok();
     setup_logger().expect("Failed to initialize logger.");
@@ -35,7 +34,7 @@ async fn test_checklist_and_token_score_generation() -> anyhow::Result<()> {
             None => {
                 if let Some(token_data) = get_core_token_data_by_address(&token).await? {
                     let client = get_chain_provider(&token_data.chain).await?;
-                    let checklist = generate_token_checklist(token_data, &client).await?;
+                    let checklist = generate_token_checklist(&token_data, &client).await?;
                     checklist
                 } else {
                     return Err(anyhow!(

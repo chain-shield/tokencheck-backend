@@ -7,6 +7,7 @@ use crate::data::chain_data::CHAIN_DATA;
 use anyhow::{anyhow, Context, Result};
 use ethers::core::k256::ecdsa::SigningKey;
 use ethers::types::{Address, Block, BlockNumber, Chain, H256, U256, U64};
+use ethers::utils::format_units;
 use ethers::{
     providers::{Middleware, Provider, Ws},
     signers::{LocalWallet, Signer, Wallet},
@@ -280,7 +281,7 @@ pub fn test_amount_of_token_to_purchase() -> anyhow::Result<U256> {
         .context("TOKEN_TO_BUY_FOR_ANVIL_TEST is not set in .env")?;
     let amount_in = ethers::utils::parse_ether(amount_to_buy)?;
     // The following commented out code can be used for additional logging if necessary.
-    // let purchase_amount = format_units(amount_in, "ether")?;
-    // println!("buying {} of token", purchase_amount);
+    let purchase_amount = format_units(amount_in, "ether")?;
+    println!("buying {} of token", purchase_amount);
     Ok(amount_in)
 }

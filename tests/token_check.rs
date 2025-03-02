@@ -41,7 +41,7 @@ async fn test_generate_checklist_base() -> anyhow::Result<()> {
     const VIRTUALS: &str = "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b";
     let data = setup(SCAM, &Chain::Base).await?;
 
-    let token_checklist = generate_token_checklist(data.token, &data.client).await?;
+    let token_checklist = generate_token_checklist(&data.token, &data.client).await?;
 
     println!("token checklist => {:#?}", token_checklist);
 
@@ -57,7 +57,7 @@ async fn test_generate_checklist_mainnet() -> anyhow::Result<()> {
     for token in WHITELIST_TOKENS_MAINNET {
         let data = setup(token, &Chain::Mainnet).await?;
 
-        let token_checklist = generate_token_checklist(data.token, &data.client).await?;
+        let token_checklist = generate_token_checklist(&data.token, &data.client).await?;
 
         println!("token checklist => {:#?}", token_checklist);
 

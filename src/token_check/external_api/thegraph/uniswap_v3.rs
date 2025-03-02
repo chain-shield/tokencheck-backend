@@ -1,16 +1,15 @@
 use anyhow::Result;
 use ethers::types::{Address, U256};
+use log::debug;
 use reqwest::Client;
 use serde::Deserialize;
 use std::{collections::HashMap, str::FromStr};
 
-use crate::token_check::check_token_lock::TokenHolders;
+use crate::{
+    token_check::check_token_lock::TokenHolders, utils::type_conversion::address_to_string,
+};
 
 use super::shared::{get_thegraph_api_key, THEGRAPH_BASE_URL, UNISWAP_V3_SUBGRAPH_ID};
-
-/// Alternative URL if using a gateway
-// const THEGRAPH_GATEWAY_URL: &str = "https://gateway.thegraph.com/api";
-// const UNISWAP_V3_SUBGRAPH_ID: &str = "5zvR82QoaXYFyDEKLZ9t6v9adgnptxYpKpSbxtgVENFV";
 
 /// Generic structure for parsing GraphQL responses.
 #[derive(Debug, Deserialize)]
@@ -29,31 +28,31 @@ struct PositionsData {
 struct Position {
     /// The position ID
     #[serde(rename = "id")]
-    _id: String,
+    _id: Option<String>,
     /// The owner's address
     owner: String,
     /// The liquidity amount as a string (to handle large numbers)
     liquidity: String,
     /// Token0 information
     #[serde(rename = "token0")]
-    _token0: Token,
+    _token0: Option<Token>,
     /// Token1 information
     #[serde(rename = "token1")]
-    _token1: Token,
+    _token1: Option<Token>,
     /// Pool information
     pool: Pool,
     /// Information about lower tick boundary
     #[serde(rename = "tickLower")]
-    _tick_lower: Tick,
+    _tick_lower: Option<Tick>,
     /// Information about upper tick boundary
     #[serde(rename = "tickUpper")]
-    _tick_upper: Tick,
+    _tick_upper: Option<Tick>,
     /// Amount of token0 deposited
     #[serde(rename = "depositedToken0")]
-    _deposited_token0: String,
+    _deposited_token0: Option<String>,
     /// Amount of token1 deposited
     #[serde(rename = "depositedToken1")]
-    _deposited_token1: String,
+    _deposited_token1: Option<String>,
 }
 
 /// Structure representing token information
@@ -74,12 +73,12 @@ struct Pool {
     id: String,
     /// Fee tier
     #[serde(rename = "feeTier")]
-    _fee_tier: String,
+    _fee_tier: Option<String>,
     /// Current tick
-    tick: String,
+    tick: Option<String>,
     /// Current sqrt price
     #[serde(rename = "sqrtPrice")]
-    _sqrt_price: String,
+    _sqrt_price: Option<String>,
 }
 
 /// Structure representing tick information
@@ -92,8 +91,8 @@ struct Tick {
 
 pub async fn fetch_uniswap_v3_positions(pool_address: Address) -> Result<Vec<TokenHolders>> {
     // Prepare the where clause based on optional parameters
-    let mut where_clause = String::from("liquidity_gt: \"0\"");
-
+    let pool_id = address_to_string(pool_address);
+    let where_clause = format!("liquidity_gt: \"0\", pool: \"{}\"", pool_id);
     // Construct the GraphQL query for positions
     let query = format!(
         r#"{{

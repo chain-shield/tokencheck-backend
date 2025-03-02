@@ -79,7 +79,7 @@ pub struct TokenCheckList {
 ///
 /// Returns an error if any of the asynchronous API calls or validations fail.
 pub async fn generate_token_checklist(
-    token: ERC20Token,
+    token: &ERC20Token,
     client: &Arc<Provider<Ws>>,
 ) -> anyhow::Result<TokenCheckList> {
     // Convert the token address to a string format for API calls.
@@ -132,12 +132,7 @@ pub async fn generate_token_checklist(
 
     // Construct the final TokenCheckList with data from all the above validations.
     let token_holder_check = TokenCheckList {
-        token: ERC20Token {
-            name: token.name,
-            address: token.address,
-            symbol: token.symbol,
-            ..Default::default()
-        },
+        token: token.clone(),
         possible_scam: token_code_check.possible_scam,
         reason_possible_scam: token_code_check.reason,
         could_legitimately_justify_suspicious_code: token_code_check

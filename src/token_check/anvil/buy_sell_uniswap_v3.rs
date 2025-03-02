@@ -11,7 +11,7 @@ use crate::token_check::anvil::tx_trait::Txs;
 use crate::utils::tx::{get_amount_out_uniswap_v3, test_amount_of_token_to_purchase, TxSlippage};
 use ethers::types::Address;
 use ethers::types::U256;
-use ethers::utils::format_units;
+use ethers::utils::{format_ether, format_units};
 use log::error;
 
 use super::simlator::AnvilTestSimulator;
@@ -56,7 +56,7 @@ impl AnvilTestSimulator {
         let amount_out_min = get_amount_out_uniswap_v3(
             weth_address,
             token.address,
-            10000, // 1%     fee tier
+            token.token_dex.fee,
             amount_in,
             TxSlippage::FivePercent,
             &token.chain,
@@ -64,7 +64,7 @@ impl AnvilTestSimulator {
         )
         .await?;
 
-        let amount_out_min_readable = format_units(amount_out_min, 18u32)?;
+        let amount_out_min_readable = format_units(amount_out_min, token.decimals as u32)?;
         println!("calculated amount out min {}", amount_out_min_readable);
         println!("........................................................");
 
@@ -73,7 +73,7 @@ impl AnvilTestSimulator {
         let params = ExactInputSingleParams {
             token_in: weth_address,
             token_out: token.address,
-            fee: 3000, // 0.3% fee tier
+            fee: token.token_dex.fee,
             recipient: self.sender,
             amount_in,
             amount_out_minimum: amount_out_min,
@@ -81,10 +81,6 @@ impl AnvilTestSimulator {
         };
 
         let tx = router.exact_input_single(params).value(amount_in);
-
-        // Estimate the gas for the transaction.
-        let gas_estimate = tx.estimate_gas().await?;
-        println!("gas est => {}", gas_estimate);
 
         println!("sending tx");
         let pending_tx_result = tx.send().await;
@@ -177,7 +173,7 @@ impl AnvilTestSimulator {
         let amount_out_min = get_amount_out_uniswap_v3(
             token.address,
             weth_address,
-            10000, // 1% fee tier
+            token.token_dex.fee,
             amount_to_sell,
             TxSlippage::FivePercent,
             &token.chain,
@@ -191,7 +187,7 @@ impl AnvilTestSimulator {
         let params = ExactInputSingleParams {
             token_in: token.address,
             token_out: weth_address,
-            fee: 10000, // 1%
+            fee: token.token_dex.fee, // 1%
             recipient: self.sender,
             amount_in: amount_to_sell,
             amount_out_minimum: amount_out_min,
