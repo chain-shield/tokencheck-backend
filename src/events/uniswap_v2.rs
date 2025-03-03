@@ -4,11 +4,12 @@ use ethers::{
     core::types::Filter,
     providers::{Middleware, Provider, Ws},
     types::{BlockNumber, Chain, Log, H256, U256},
-    utils::keccak256,
 };
 use std::sync::Arc;
 
-use crate::data::chain_data::CHAIN_DATA;
+use crate::data::{chain_data::CHAIN_DATA, dex::Dex};
+
+use super::shared::{get_deployment_block_for_dex_, get_signature_hash};
 
 pub const PAIR_CREATED_SIGNATURE: &str = "PairCreated(address,address,address,uint256)";
 
@@ -39,6 +40,9 @@ pub async fn get_uniswap_v2_pairs_for_token(
     // The token address could be in either topic1 (token0) or topic2 (token1)
     // So we create two filters and combine the results
 
+    // get deployment block for uniswap
+    let deployment_block = get_deployment_block_for_dex_(&Dex::UniswapV2, &chain);
+
     // Filter for token0 = our token
     let filter_token0 = Filter::new()
         .address(factory_address)
@@ -46,7 +50,7 @@ pub async fn get_uniswap_v2_pairs_for_token(
         .topic1(ethers::types::ValueOrArray::Value(H256::from(
             token_address,
         )))
-        .from_block(from_block.unwrap_or(BlockNumber::Earliest))
+        .from_block(from_block.unwrap_or(deployment_block.into()))
         .to_block(to_block.unwrap_or(BlockNumber::Latest));
 
     // Filter for token1 = our token
@@ -56,7 +60,7 @@ pub async fn get_uniswap_v2_pairs_for_token(
         .topic2(ethers::types::ValueOrArray::Value(H256::from(
             token_address,
         )))
-        .from_block(from_block.unwrap_or(BlockNumber::Earliest))
+        .from_block(from_block.unwrap_or(deployment_block.into()))
         .to_block(to_block.unwrap_or(BlockNumber::Latest));
 
     // Get logs for both filters
@@ -99,8 +103,4 @@ pub fn decode_pair_created_event(log: &Log) -> anyhow::Result<PairCreatedEvent> 
     };
 
     Ok(pair_created_event)
-}
-
-pub fn get_signature_hash(interface: &str) -> H256 {
-    H256::from(keccak256(interface.as_bytes()))
 }

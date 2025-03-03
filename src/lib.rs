@@ -2,6 +2,7 @@
 //! This library provides modules for ABI interactions, data management, token checking, logging, and various utilities.
 
 pub mod events {
+    pub mod shared;
     pub mod uniswap_v2;
     pub mod uniswap_v3;
 }
