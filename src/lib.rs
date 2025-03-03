@@ -20,8 +20,8 @@ pub mod abi {
 
 pub mod shield_server {
     pub mod database;
-    pub mod logger;
-    pub mod models;
+    pub mod db_logger;
+    pub mod db_models;
 }
 
 pub mod data {
