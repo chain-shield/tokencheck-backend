@@ -2,9 +2,9 @@
 //! This library provides modules for ABI interactions, data management, token checking, logging, and various utilities.
 
 pub mod events {
+    pub mod dex_liquidity;
     pub mod shared;
-    pub mod uniswap_v2;
-    pub mod uniswap_v3;
+    pub mod uniswap;
 }
 
 pub mod abi {
