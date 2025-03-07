@@ -1,5 +1,4 @@
-use ethers::types::{Address, U256};
-use log::error;
+use ethers::types::Address;
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::sync::Arc;

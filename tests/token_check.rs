@@ -3,7 +3,8 @@ use chainshield_backend::abi::erc20::ERC20;
 use chainshield_backend::app_config::AI_MODEL;
 use chainshield_backend::data::chain_data::CHAIN_DATA;
 use chainshield_backend::data::dex::TokenDex;
-use chainshield_backend::data::token_data::{get_token_uniswap_v2_pair_address, ERC20Token};
+use chainshield_backend::data::token_data::ERC20Token;
+use chainshield_backend::dex::dex_data::find_top_dex_for_token;
 use chainshield_backend::token_check::token_checklist::generate_token_checklist;
 use chainshield_backend::token_check::token_score::{
     get_token_score_with_ai, get_token_score_with_rules_based_approch,
@@ -38,7 +39,7 @@ pub struct SetupData {
 #[ignore]
 async fn test_generate_checklist_base() -> anyhow::Result<()> {
     const SCAM: &str = "0x9a301ad1ae2ba1ecf8693a60de92e834f4429e8c";
-    const VIRTUALS: &str = "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b";
+    const VIRTUALS: &str = "0x0b3e328455c4059eeb9e3f84b5543f74e24e7e1b";
     let data = setup(SCAM, &Chain::Base).await?;
 
     let token_checklist = generate_token_checklist(&data.token, &data.client).await?;
@@ -89,19 +90,14 @@ pub async fn setup(token_address: &str, chain: &Chain) -> Result<SetupData> {
 
     // get pair address of token, and is_token_0 , true if token is token_0, otherwise its token_1
     println!("get pair address..");
-    let (pair_address, is_token_0) =
-        get_token_uniswap_v2_pair_address(token_address_h160, chain, &client).await?;
+    let dex = find_top_dex_for_token(token_address_h160, chain).await?;
 
     let token = ERC20Token {
         name,
         symbol,
         decimals,
         address: token_address_h160,
-        token_dex: TokenDex {
-            pair_or_pool_address: pair_address,
-            is_token_0,
-            ..Default::default()
-        },
+        token_dex: dex,
         ..Default::default()
     };
 

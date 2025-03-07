@@ -21,6 +21,50 @@ pub const WHITELIST_TOKENS_MAINNET: [&str; 4] = [
 ];
 
 #[tokio::test]
+async fn test_checklist_and_token_score_generation_with_link() -> anyhow::Result<()> {
+    dotenv().ok();
+    setup_logger().expect("Failed to initialize logger.");
+
+    let LINK = "0x514910771af9ca656af840dff83e8264ecf986ca";
+
+    // THIS IS FOR TESTING PURPOSES - WILL BE REPLACED BY SERVER CODE
+    let token_address: Address = LINK.parse()?;
+
+    let token_checklist = match get_token_checklist(token_address).await {
+        Some(checklist) => checklist,
+        None => {
+            if let Some(token_data) = get_core_token_data_by_address(&LINK).await? {
+                let client = get_chain_provider(&token_data.chain).await?;
+                let checklist = generate_token_checklist(&token_data, &client).await?;
+                checklist
+            } else {
+                return Err(anyhow!(
+                    "could not get token data, address may not be valid"
+                ));
+            }
+        }
+    };
+
+    info!("token checklist => {:#?}", token_checklist);
+
+    // TODO - SAVE TOKEN CHECKLIST TO CACHE
+
+    // Calculate token score based on predefined rules
+    let token_score = get_token_score_with_rules_based_approch(token_checklist.clone());
+
+    // TODO - CREATE CACHE FOR TOKEN SCORE AND SAVE SCORE TO CACHE
+
+    info!("token score (rule based) => {:#?}", token_score);
+
+    // Calculate token score using AI model
+    let token_score_ai = get_token_score_with_ai(token_checklist, &AI_MODEL).await?;
+    info!("token score (ai) => {:#?}", token_score_ai);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore]
 async fn test_checklist_and_token_score_generation() -> anyhow::Result<()> {
     dotenv().ok();
     setup_logger().expect("Failed to initialize logger.");

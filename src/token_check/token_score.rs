@@ -6,7 +6,7 @@ use serde::Deserialize;
 use crate::{
     app_config::{
         FINAL_DETERMINATION_PROMPT_UPDATED, LIQUIDITY_PERCENTAGE_LOCKED,
-        TOKEN_HOLDER_THRESHOLD_PERCENTAGE, VERY_LOW_LIQUIDITY_THRESHOLD,
+        TOKEN_HOLDER_THRESHOLD_PERCENTAGE, USD_LIQUIDITY_THRESHOLD,
     },
     token_check::ai::{
         ai_structs::PromptType,
@@ -89,7 +89,7 @@ pub fn get_token_score_with_rules_based_approch(token_checklist: TokenCheckList)
         };
 
     // check that liquidity pool has enough liquidity , low liquidity usually indicates its a scam
-    let enough_liquidity = token_checklist.liquidity_in_wei > VERY_LOW_LIQUIDITY_THRESHOLD;
+    let enough_liquidity = token_checklist.liquidity_in_usd > USD_LIQUIDITY_THRESHOLD;
 
     // check top token holder only holdes small percentage of tokens
     let top_token_holder_check =

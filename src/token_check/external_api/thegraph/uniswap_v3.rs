@@ -1,15 +1,16 @@
 use anyhow::Result;
 use ethers::types::{Address, U256};
-use log::debug;
 use reqwest::Client;
 use serde::Deserialize;
 use std::{collections::HashMap, str::FromStr};
 
 use crate::{
-    token_check::check_token_lock::TokenHolders, utils::type_conversion::address_to_string,
+    app_config::{THEGRAPH_BASE_URL, UNISWAP_V3_MAINNET_SUBGRAPH_ID},
+    token_check::check_token_lock::TokenHolders,
+    utils::type_conversion::address_to_string,
 };
 
-use super::shared::{get_thegraph_api_key, THEGRAPH_BASE_URL, UNISWAP_V3_SUBGRAPH_ID};
+use super::shared::get_thegraph_api_key;
 
 /// Generic structure for parsing GraphQL responses.
 #[derive(Debug, Deserialize)]
@@ -144,7 +145,7 @@ pub async fn fetch_uniswap_v3_positions(pool_address: Address) -> Result<Vec<Tok
     // Construct the full GraphQL URL including the API key and subgraph ID.
     let graphql_url = format!(
         "{}/{}/subgraphs/id/{}",
-        THEGRAPH_BASE_URL, thegraph_api_key, UNISWAP_V3_SUBGRAPH_ID
+        THEGRAPH_BASE_URL, thegraph_api_key, UNISWAP_V3_MAINNET_SUBGRAPH_ID
     );
 
     // Send the POST request and ensure the HTTP status is 200 (OK).

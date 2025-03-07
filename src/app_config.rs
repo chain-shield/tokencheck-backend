@@ -36,19 +36,20 @@ pub const APP_MODE: AppMode = AppMode::Production;
 /// Specifies the AI model used for token analysis.
 pub const AI_MODEL: AIModel = AIModel::OpenAi;
 
-/// This value is set to the equivalent of 10 ether.
-pub const MIN_LIQUIDITY: u128 = 10_000_000_000_000_000_000; // 10 ether
+pub const USD_LIQUIDITY_THRESHOLD: f64 = 10_000.0;
 
-/// Threshold for very low liquidity (in wei); tokens below this may be high risk.
-///
-/// Although the comment indicates "3 ether", the value here corresponds to 1 ether.
-pub const VERY_LOW_LIQUIDITY_THRESHOLD: u128 = 1_000_000_000_000_000_000; // 3 ether
+/// Base URL for TheGraph API.
+pub const THEGRAPH_BASE_URL: &str = "https://gateway.thegraph.com/api";
+
+/// Uniswap V2 & V3     subgraph ID used for querying liquidity positions.
+pub const UNISWAP_V2_MAINNET_SUBGRAPH_ID: &str = "EYCKATKGBKLWvSfwvBjzfCBmGwYNdVkduYXVivCsLRFu";
+pub const UNISWAP_V2_BASE_SUBGRAPH_ID: &str = "4jGhpKjW4prWoyt5Bwk1ZHUwdEmNWveJcjEyjoTZWCY9";
+
+pub const UNISWAP_V3_MAINNET_SUBGRAPH_ID: &str = "5zvR82QoaXYFyDEKLZ9t6v9adgnptxYpKpSbxtgVENFV";
+pub const UNISWAP_V3_BASE_SUBGRAPH_ID: &str = "43Hwfi3dJSoGpyas9VwNoDAv55yjgGrPpNSmbQZArzMG";
 
 /// Minimum trade factor multiplier used in transactional and liquidity assessments.
 pub const MIN_TRADE_FACTOR: u64 = 10;
-
-/// Minimum reserve ETH factor multiplier used in liquidity calculations.
-pub const MIN_RESERVE_ETH_FACTOR: u64 = 10;
 
 /// Expected percentage of liquidity that should be locked (expressed as a percentage).
 pub const LIQUIDITY_PERCENTAGE_LOCKED: f64 = 90.0;
@@ -89,9 +90,6 @@ pub const SELL_ATTEMPT_LIMIT: u8 = 10;
 
 /// Maximum number of API checks that can be performed.
 pub const API_CHECK_LIMIT: u8 = 10;
-
-/// List of blacklisted tokens or identifiers.
-pub const BLACKLIST: [&str; 1] = ["CHILLI"];
 
 /// Prompt for final token determination (updated version) for JSON assessment.
 ///
