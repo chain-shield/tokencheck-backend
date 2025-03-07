@@ -53,6 +53,7 @@ pub mod token_check {
         pub mod structs;
     }
     pub mod check_token_lock;
+    pub mod main_token_check;
     pub mod token_checklist;
     pub mod token_holder_check;
     pub mod token_liquidity_check;

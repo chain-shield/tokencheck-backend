@@ -41,7 +41,7 @@ pub struct TokenScoreAssessment {
 /// # Returns
 /// * A Result containing an optional TokenScoreAssessment.
 pub async fn get_token_score_with_ai(
-    token_checklist: TokenCheckList,
+    token_checklist: &TokenCheckList,
     ai_model: &AIModel,
 ) -> anyhow::Result<Option<TokenScoreAssessment>> {
     let token_checklist = format!("{:#?}", token_checklist);
