@@ -104,6 +104,11 @@ This provided assessment will have the following field:
     - token_name
     - token_address
     - token_symbol
+    - token_decimals
+
+    // information on top liquidity pair/pool tokens has on a major dex
+    // if this value is None, then token is not listed on a major dex
+    - token_dex
 
     - possible_scam (boolean)
 
@@ -125,8 +130,8 @@ This provided assessment will have the following field:
     // what percentage of LP (liquidity tokens) is locked (in 3rd party locker) or burned (pointing to zero/dead address)
     - percentage_liquidity_locked_or_burned Some(0.0 to 100.0) // wrapped in some because its Option<f64> (rust), if value is None then could not determine value
 
-    // the amount of liquidity (in wei) the token has on a major exchange (uniswap, etc)
-    - liquidity_in_wei
+    // the amount of liquidity (in usd) the token has on a major exchange (uniswap, etc)
+    - liquidity_in_usd
 
     // does token have a website?
     - has_website (boolean)
