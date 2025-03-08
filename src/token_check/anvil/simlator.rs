@@ -11,15 +11,12 @@ use ethers::{
     middleware::SignerMiddleware,
     providers::{Middleware, Provider, Ws},
     signers::{Signer, Wallet},
-    types::Address,
+    types::{Address, Chain},
     utils::{Anvil, AnvilInstance},
 };
 use std::sync::Arc;
 
-use crate::{
-    app_config::CHAIN,
-    utils::tx::{get_test_wallet, get_wallet},
-};
+use crate::utils::tx::{get_test_wallet, get_wallet};
 
 /// The starting balance for the simulated account.
 pub const STARTING_BALANCE: f64 = 1000.0;
@@ -69,14 +66,14 @@ impl AnvilTestSimulator {
     ///     // Use simulator for sending transactions or other operations.
     /// }
     /// ```
-    pub async fn new(rpc_url: &str) -> Result<Self> {
+    pub async fn new(rpc_url: &str, chain: &Chain) -> Result<Self> {
         // Configure and spawn a new Anvil instance, forking from the provided Geth node URL.
-        println!("creating forked anvil note");
+        println!("creating forked anvil node");
         let anvil = Anvil::new()
             // Optionally add extra arguments or configuration options as needed.
             // .args(["--no-storage-caching", "--code-size-limit", "2048"])
             .fork(rpc_url) // Fork from the Geth node.
-            .chain_id(CHAIN) // Set the chain ID for the forked network.
+            .chain_id(*chain as u64) // Set the chain ID for the forked network.
             .args(["--no-storage-caching"]) // Additional arguments to Anvil.
             .spawn();
 
@@ -93,8 +90,8 @@ impl AnvilTestSimulator {
 
         // Retrieve primary and test wallets.
         println!("getting wallets setup");
-        let wallet = get_wallet()?; // Primary wallet.
-        let second_wallet = get_test_wallet()?; // Secondary/test wallet.
+        let wallet = get_wallet(chain)?; // Primary wallet.
+        let second_wallet = get_test_wallet(chain)?; // Secondary/test wallet.
         let from_address = wallet.address();
 
         // Create signer middleware clients for both wallets.

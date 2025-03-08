@@ -1,4 +1,5 @@
 use crate::data::chain_data::CHAIN_DATA;
+use crate::data::dex::Dex;
 use crate::data::token_data::ERC20Token;
 use crate::token_check::anvil::simlator::AnvilTestSimulator;
 use crate::token_check::anvil::tx_trait::Txs;
@@ -42,13 +43,30 @@ impl ERC20Token {
     /// If any of the simulation steps fail (for example, during the sell simulation), the error will be propagated.
     pub async fn validate_with_simulated_buy_sell(&self) -> anyhow::Result<TokenStatus> {
         // Launch a new anvil node for validation using the websocket URL.
-        let ws_url = CHAIN_DATA.get_address().ws_url.clone();
-        let anvil = AnvilTestSimulator::new(&ws_url).await?;
+        let ws_url = CHAIN_DATA.get_address(&self.chain).ws_url.clone();
+        let anvil = AnvilTestSimulator::new(&ws_url, &self.chain).await?;
+
+        let top_dex_data = self
+            .clone()
+            .token_dex
+            .expect("is_liquidity_locked: no token dex found");
 
         println!("validating token...");
 
         // Attempt to buy the token using the anvil simulator.
-        let buy_result = anvil.simulate_buying_token_for_weth(self).await;
+        let buy_result = match top_dex_data.dex {
+            Dex::UniswapV2 => {
+                anvil
+                    .simulate_buying_token_on_uniswap_v2_for_weth(&top_dex_data, self)
+                    .await
+            }
+            Dex::UniswapV3 => {
+                anvil
+                    .simulate_buying_token_on_uniswap_v3_for_weth(&top_dex_data, self)
+                    .await
+            }
+            _ => return Ok(TokenStatus::CannotBuy),
+        };
 
         if let Err(err) = buy_result {
             error!("Buy transaction failed with error: {:?}", err);
@@ -104,7 +122,21 @@ impl ERC20Token {
 
         // Attempt to sell the token.
         println!("simulate selling token for validation");
-        let sell_result = anvil.simulate_selling_token_for_weth(self).await;
+        // Attempt to buy the token using the anvil simulator.
+        let sell_result = match top_dex_data.dex {
+            Dex::UniswapV2 => {
+                anvil
+                    .simulate_selling_token_on_uniswap_v2_for_weth(&top_dex_data, self)
+                    .await
+            }
+            Dex::UniswapV3 => {
+                anvil
+                    .simulate_selling_token_on_uniswap_v3_for_weth(&top_dex_data, self)
+                    .await
+            }
+            _ => return Ok(TokenStatus::CannotBuy),
+        };
+
         match sell_result {
             Ok(_) => {
                 // After a successful sell, ensure that the token balance becomes zero.

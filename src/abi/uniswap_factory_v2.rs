@@ -10,11 +10,6 @@ pub use uniswap_v2_factory::*;
     non_camel_case_types
 )]
 pub mod uniswap_v2_factory {
-    const _: () = {
-        ::core::include_bytes!(
-            "/Users/apmfree/Desktop/rust/learn_ethers/examples/abi/factor_v2.json",
-        );
-    };
     #[allow(deprecated)]
     fn __abi() -> ::ethers::core::abi::Abi {
         ::ethers::core::abi::ethabi::Contract {

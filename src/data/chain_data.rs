@@ -9,8 +9,6 @@ use once_cell::sync::Lazy;
 use serde::Deserialize;
 use std::{collections::HashMap, fs};
 
-use crate::app_config::CHAIN;
-
 /// Ethereum placeholder address used for representing ETH.
 pub const ETH: &str = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 /// Bitcoin placeholder address.
@@ -26,15 +24,15 @@ pub struct ContractAddresses {
     /// Chainlink (LINK) token contract address.
     pub link: String,
     /// Uniswap Swap Router contract address.
-    pub uniswap_swap_router: String,
+    pub uniswap_v3_router: String,
     /// Uniswap V2 Router contract address.
     pub uniswap_v2_router: String,
     /// Uniswap V2 Factory contract address.
     pub uniswap_v2_factory: String,
     /// Uniswap Factory contract address.
-    pub uniswap_factory: String,
+    pub uniswap_v3_factory: String,
     /// Uniswap Quoter contract address.
-    pub uniswap_quoter: String,
+    pub uniswap_v3_quoter: String,
     /// WebSocket endpoint URL for blockchain access.
     pub ws_url: String,
     /// HTTP endpoint URL for blockchain access.
@@ -62,11 +60,11 @@ impl ContractAddressMap {
         addresses.insert(
             Chain::Base,
             ContractAddresses {
-                uniswap_factory: chains.base.uniswap_factory,
-                uniswap_swap_router: chains.base.uniswap_swap_router,
+                uniswap_v3_factory: chains.base.uniswap_factory,
+                uniswap_v3_router: chains.base.uniswap_swap_router,
                 uniswap_v2_factory: chains.base.uniswap_v2_factory,
                 uniswap_v2_router: chains.base.uniswap_v2_router,
-                uniswap_quoter: chains.base.uniswap_quoter,
+                uniswap_v3_quoter: chains.base.uniswap_quoter,
                 weth: chains.base.weth,
                 link: chains.base.link,
                 ws_url: chains.base.ws_url,
@@ -79,9 +77,9 @@ impl ContractAddressMap {
         addresses.insert(
             Chain::Mainnet,
             ContractAddresses {
-                uniswap_factory: chains.mainnet.uniswap_factory,
-                uniswap_swap_router: chains.mainnet.uniswap_swap_router,
-                uniswap_quoter: chains.mainnet.uniswap_quoter,
+                uniswap_v3_factory: chains.mainnet.uniswap_factory,
+                uniswap_v3_router: chains.mainnet.uniswap_swap_router,
+                uniswap_v3_quoter: chains.mainnet.uniswap_quoter,
                 uniswap_v2_factory: chains.mainnet.uniswap_v2_factory,
                 uniswap_v2_router: chains.mainnet.uniswap_v2_router,
                 weth: chains.mainnet.weth,
@@ -99,8 +97,8 @@ impl ContractAddressMap {
     /// # Panics
     ///
     /// Panics if the current chain is not supported (i.e., missing from the addresses mapping).
-    pub fn get_address(&self) -> &ContractAddresses {
-        self.addresses.get(&CHAIN).expect("Chain not supported")
+    pub fn get_address(&self, chain: &Chain) -> &ContractAddresses {
+        self.addresses.get(chain).expect("Chain not supported")
     }
 }
 

@@ -1,7 +1,22 @@
 //! ChainShield TokenCheck Backend Library.
 //! This library provides modules for ABI interactions, data management, token checking, logging, and various utilities.
 
+pub mod dex {
+    pub mod thegraph {
+        pub mod shared;
+        pub mod uniswap_v2;
+        pub mod uniswap_v3;
+    }
+    pub mod dex_data;
+}
+
+pub mod chainlink {
+    pub mod chainlink_data;
+    pub mod chainlink_feed_map;
+}
+
 pub mod abi {
+    pub mod chainlink_aggregator;
     pub mod erc20;
     pub mod uniswap_factory_v2;
     pub mod uniswap_pair;
@@ -12,8 +27,17 @@ pub mod abi {
     pub mod uniswap_v3_router;
 }
 
+pub mod shield_server {
+    pub mod database;
+    pub mod db_logger;
+    pub mod db_models;
+}
+
 pub mod data {
     pub mod chain_data;
+    pub mod dex;
+    pub mod provider_manager;
+    pub mod token_checklist_cache;
     pub mod token_data;
 }
 
@@ -29,6 +53,7 @@ pub mod token_check {
         pub mod structs;
     }
     pub mod check_token_lock;
+    pub mod main_token_check;
     pub mod token_checklist;
     pub mod token_holder_check;
     pub mod token_liquidity_check;
@@ -37,10 +62,15 @@ pub mod token_check {
     pub mod external_api {
         pub mod etherscan_api;
         pub mod moralis;
-        pub mod thegraph_api;
+        pub mod thegraph {
+            pub mod shared;
+            pub mod uniswap_v2;
+            pub mod uniswap_v3;
+        }
     }
     pub mod anvil {
-        pub mod buy_sell;
+        pub mod buy_sell_uniswap_v2;
+        pub mod buy_sell_uniswap_v3;
         pub mod simlator;
         pub mod supporting_methods;
         pub mod tx_trait;

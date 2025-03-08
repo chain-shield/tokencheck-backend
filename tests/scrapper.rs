@@ -9,8 +9,11 @@ use chainshield_backend::{
     utils::web_scrapper::scrape_site_and_get_text,
 };
 use dotenv::dotenv;
-use ethers::providers::{Provider, Ws};
 use ethers::types::Address;
+use ethers::{
+    providers::{Provider, Ws},
+    types::Chain,
+};
 use std::{sync::Arc, time::Duration};
 use tokio::time::sleep;
 
@@ -27,7 +30,7 @@ pub const WHITELIST_TOKENS: [&str; 4] = [
 async fn test_audit_token_contract() -> anyhow::Result<()> {
     dotenv().ok();
     const VIRTUALS: &str = "0x0000000000000000000000000000000000000000";
-    let source_code = get_source_code(VIRTUALS).await?;
+    let source_code = get_source_code(VIRTUALS, &Chain::Base).await?;
 
     let audit = check_code_with_ai(source_code, &AI_MODEL).await?.unwrap();
     println!("{:#?}", audit);
@@ -40,7 +43,7 @@ async fn test_audit_token_contract() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_scrapper() -> anyhow::Result<()> {
     dotenv().ok();
-    let ws_url = CHAIN_DATA.get_address().ws_url.clone();
+    let ws_url = CHAIN_DATA.get_address(&Chain::Mainnet).ws_url.clone();
     let provider = Provider::<Ws>::connect(ws_url).await?;
     let client = Arc::new(provider.clone());
 
@@ -50,7 +53,7 @@ async fn test_scrapper() -> anyhow::Result<()> {
         let name = contract.name().call().await?;
 
         sleep(Duration::from_secs(1)).await;
-        let token_info = get_token_info(token).await?.unwrap();
+        let token_info = get_token_info(token, &Chain::Mainnet).await?.unwrap();
         println!("website content for {} ....", name);
         let website_text = scrape_site_and_get_text(&token_info.website).await?;
         assert!(!website_text.is_empty());

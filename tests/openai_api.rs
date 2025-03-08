@@ -1,10 +1,11 @@
 use anyhow::Result;
 use chainshield_backend::data::chain_data::CHAIN_DATA;
-use chainshield_backend::data::token_data::{
-    get_token_uniswap_v2_pair_address, ERC20Token, TokenDex,
-};
+use chainshield_backend::data::dex::TokenDex;
+use chainshield_backend::data::token_data::ERC20Token;
+use chainshield_backend::dex::dex_data::find_top_dex_for_token;
 use chainshield_backend::token_check::external_api::moralis;
 use chainshield_backend::token_check::token_holder_check::get_token_holder_check;
+use chainshield_backend::utils::logging::setup_logger;
 use chainshield_backend::{
     abi::erc20::ERC20,
     app_config::AI_MODEL,
@@ -15,7 +16,7 @@ use chainshield_backend::{
 };
 use dotenv::dotenv;
 use ethers::providers::{Provider, Ws};
-use ethers::types::Address;
+use ethers::types::{Address, Chain};
 use std::{sync::Arc, time::Duration};
 use tokio::time::sleep;
 
@@ -44,7 +45,7 @@ pub struct SetupData {
 async fn test_audit_token_contract() -> anyhow::Result<()> {
     dotenv().ok();
     const VIRTUALS: &str = "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b";
-    let source_code = get_source_code(VIRTUALS).await?;
+    let source_code = get_source_code(VIRTUALS, &Chain::Base).await?;
 
     let audit = check_code_with_ai(source_code, &AI_MODEL).await?.unwrap();
     println!("{:#?}", audit);
@@ -60,7 +61,7 @@ async fn test_audit_token_contract() -> anyhow::Result<()> {
 async fn test_contract_creation() -> anyhow::Result<()> {
     dotenv().ok();
     const VIRTUALS: &str = "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b";
-    let token_owner = get_contract_owner(VIRTUALS).await?;
+    let token_owner = get_contract_owner(VIRTUALS, &Chain::Mainnet).await?;
 
     match token_owner {
         Some(data) => println!("{:#?}", data),
@@ -79,7 +80,7 @@ async fn get_holder_analysis() -> anyhow::Result<()> {
 
     const VIRTUALS: &str = "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b";
 
-    let info = setup(VIRTUALS).await?;
+    let info = setup(VIRTUALS, &Chain::Base).await?;
 
     // let token_owner = get_contract_owner(VIRTUALS).await?;
     //
@@ -103,7 +104,7 @@ async fn get_holder_analysis() -> anyhow::Result<()> {
 async fn test_audit_token_contract_2() -> anyhow::Result<()> {
     dotenv().ok();
     const SCAM_TOKEN: &str = "0x1f035d740FD128E3818a08D613bC4C2D8f8Fccee";
-    let source_code = get_source_code(SCAM_TOKEN).await?;
+    let source_code = get_source_code(SCAM_TOKEN, &Chain::Base).await?;
 
     let audit = check_code_with_ai(source_code, &AI_MODEL).await?.unwrap();
 
@@ -116,7 +117,7 @@ async fn test_audit_token_contract_2() -> anyhow::Result<()> {
 async fn test_whitelist_contracts() -> anyhow::Result<()> {
     dotenv().ok();
 
-    let ws_url = CHAIN_DATA.get_address().ws_url.clone();
+    let ws_url = CHAIN_DATA.get_address(&Chain::Mainnet).ws_url.clone();
     let provider = Provider::<Ws>::connect(ws_url).await?;
     let client = Arc::new(provider.clone());
 
@@ -124,7 +125,7 @@ async fn test_whitelist_contracts() -> anyhow::Result<()> {
         let token_address: Address = token.parse()?;
         let contract = ERC20::new(token_address, client.clone());
         let name = contract.name().call().await?;
-        let source_code = get_source_code(token).await?;
+        let source_code = get_source_code(token, &Chain::Mainnet).await?;
 
         match check_code_with_ai(source_code, &AI_MODEL).await? {
             Some(audit) => println!("{} AUDIT => {:#?}", name, audit),
@@ -141,7 +142,7 @@ async fn test_whitelist_contracts() -> anyhow::Result<()> {
 async fn test_scamlist_contracts() -> anyhow::Result<()> {
     dotenv().ok();
 
-    let ws_url = CHAIN_DATA.get_address().ws_url.clone();
+    let ws_url = CHAIN_DATA.get_address(&Chain::Base).ws_url.clone();
     let provider = Provider::<Ws>::connect(ws_url).await?;
     let client = Arc::new(provider.clone());
 
@@ -149,7 +150,7 @@ async fn test_scamlist_contracts() -> anyhow::Result<()> {
         let token_address: Address = token.parse()?;
         let contract = ERC20::new(token_address, client.clone());
         let name = contract.name().call().await?;
-        let source_code = get_source_code(token).await?;
+        let source_code = get_source_code(token, &Chain::Base).await?;
 
         match check_code_with_ai(source_code, &AI_MODEL).await? {
             Some(audit) => println!("{} AUDIT => {:#?}", name, audit),
@@ -165,7 +166,7 @@ async fn test_scamlist_contracts() -> anyhow::Result<()> {
 #[ignore]
 async fn test_whitelist_get_info() -> anyhow::Result<()> {
     dotenv().ok();
-    let ws_url = CHAIN_DATA.get_address().ws_url.clone();
+    let ws_url = CHAIN_DATA.get_address(&Chain::Mainnet).ws_url.clone();
     let provider = Provider::<Ws>::connect(ws_url).await?;
     let client = Arc::new(provider.clone());
 
@@ -175,7 +176,7 @@ async fn test_whitelist_get_info() -> anyhow::Result<()> {
         let name = contract.name().call().await?;
 
         sleep(Duration::from_secs(1)).await;
-        let token_info = get_token_info(token).await?;
+        let token_info = get_token_info(token, &Chain::Mainnet).await?;
 
         match token_info {
             Some(info) => {
@@ -194,7 +195,7 @@ async fn test_whitelist_get_info() -> anyhow::Result<()> {
 #[ignore]
 async fn test_whitelist_get_info_using_moralis() -> anyhow::Result<()> {
     dotenv().ok();
-    let ws_url = CHAIN_DATA.get_address().ws_url.clone();
+    let ws_url = CHAIN_DATA.get_address(&Chain::Mainnet).ws_url.clone();
     let provider = Provider::<Ws>::connect(ws_url).await?;
     let client = Arc::new(provider.clone());
 
@@ -203,7 +204,7 @@ async fn test_whitelist_get_info_using_moralis() -> anyhow::Result<()> {
         let contract = ERC20::new(token_address, client.clone());
         let name = contract.name().call().await?;
 
-        let token_info = moralis::get_token_info(token).await?;
+        let token_info = moralis::get_token_info(token, &Chain::Mainnet).await?;
 
         match token_info {
             Some(info) => {
@@ -219,9 +220,10 @@ async fn test_whitelist_get_info_using_moralis() -> anyhow::Result<()> {
 }
 
 /// get ERC20Token - struct that contains all data we need - from token address
-pub async fn setup(token_address: &str) -> Result<SetupData> {
+pub async fn setup(token_address: &str, chain: &Chain) -> Result<SetupData> {
     dotenv().ok();
-    let ws_url = CHAIN_DATA.get_address().ws_url.clone();
+    setup_logger().expect("Failed to initialize logger.");
+    let ws_url = CHAIN_DATA.get_address(chain).ws_url.clone();
     let provider = Provider::<Ws>::connect(ws_url).await?;
     let client = Arc::new(provider.clone());
 
@@ -235,19 +237,14 @@ pub async fn setup(token_address: &str) -> Result<SetupData> {
 
     // get pair address of token, and is_token_0 , true if token is token_0, otherwise its token_1
     println!("get pair address..");
-    let (pair_address, is_token_0) =
-        get_token_uniswap_v2_pair_address(token_address_h160, &client).await?;
+    let dex = find_top_dex_for_token(token_address_h160, chain).await?;
 
     let token = ERC20Token {
         name,
         symbol,
         decimals,
         address: token_address_h160,
-        token_dex: TokenDex {
-            pair_or_pool_address: pair_address,
-            is_token_0,
-            ..Default::default()
-        },
+        token_dex: dex,
         ..Default::default()
     };
 

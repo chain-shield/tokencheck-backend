@@ -10,11 +10,11 @@ use ethers::prelude::*;
 use std::sync::Arc;
 
 use crate::{
-    app_config::{CHAIN, TOKEN_LOCKERS_BASE, TOKEN_LOCKERS_MAINNET},
+    app_config::{TOKEN_LOCKERS_BASE, TOKEN_LOCKERS_MAINNET},
     token_check::{
         check_token_lock::TokenHolders,
-        external_api::thegraph_api::fetch_uniswap_lp_holders,
-        {external_api::moralis, token_holder_check::u256_div_u256_to_f64},
+        external_api::{moralis, thegraph::shared::fetch_lp_holders},
+        token_holder_check::u256_div_u256_to_f64,
     },
     utils::type_conversion::address_to_string,
 };
@@ -79,13 +79,17 @@ pub async fn get_percentage_liquidity_locked_or_burned(
     let total_supply = token.get_total_liquidity_token_supply(client).await?;
 
     // Retrieve the list of token holders based on the chain configuration.
-    let top_holders: Vec<TokenHolders> = if CHAIN == Chain::Base {
-        // For Chain::Base, convert the pair address and use the Moralis API.
-        let pair_address = address_to_string(token.token_dex.pair_or_pool_address);
-        moralis::get_token_holder_list(&pair_address).await?
+    let top_holders: Vec<TokenHolders> = if token.chain == Chain::Mainnet {
+        // For Chain::Mainnet, fetch token holders using Uniswap's Graph API.
+        fetch_lp_holders(token).await?
     } else {
-        // For other chains, fetch token holders using Uniswap's Graph API.
-        fetch_uniswap_lp_holders(token.token_dex.pair_or_pool_address).await?
+        let token_dex = token
+            .clone()
+            .token_dex
+            .expect("is_liquidity_locked: no token dex found");
+        // For L2s, convert the pair address and use the Moralis API.
+        let pair_address = address_to_string(token_dex.pair_address);
+        moralis::get_token_holder_list(&pair_address, &token.chain).await?
     };
 
     // Return None if no token holders are found.
@@ -110,7 +114,8 @@ pub async fn get_percentage_liquidity_locked_or_burned(
         }
 
         // Depending on the chain, add to the locked balance if the holder is in the known list.
-        if CHAIN == Chain::Mainnet {
+        // TODO - UPDATE plus update liquidity lockers
+        if token.chain == Chain::Mainnet {
             if TOKEN_LOCKERS_MAINNET.contains(&info.holder.as_str()) {
                 locked_balance += info.quantity;
             }

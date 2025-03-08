@@ -2,16 +2,15 @@ use anyhow::Result;
 use chainshield_backend::abi::erc20::ERC20;
 use chainshield_backend::app_config::AI_MODEL;
 use chainshield_backend::data::chain_data::CHAIN_DATA;
-use chainshield_backend::data::token_data::{
-    get_token_uniswap_v2_pair_address, ERC20Token, TokenDex,
-};
+use chainshield_backend::data::token_data::ERC20Token;
+use chainshield_backend::dex::dex_data::find_top_dex_for_token;
 use chainshield_backend::token_check::token_checklist::generate_token_checklist;
 use chainshield_backend::token_check::token_score::{
     get_token_score_with_ai, get_token_score_with_rules_based_approch,
 };
 use dotenv::dotenv;
 use ethers::providers::{Provider, Ws};
-use ethers::types::Address;
+use ethers::types::{Address, Chain};
 use std::sync::Arc;
 
 // mainnet
@@ -39,10 +38,10 @@ pub struct SetupData {
 #[ignore]
 async fn test_generate_checklist_base() -> anyhow::Result<()> {
     const SCAM: &str = "0x9a301ad1ae2ba1ecf8693a60de92e834f4429e8c";
-    const VIRTUALS: &str = "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b";
-    let data = setup(SCAM).await?;
+    const VIRTUALS: &str = "0x0b3e328455c4059eeb9e3f84b5543f74e24e7e1b";
+    let data = setup(SCAM, &Chain::Base).await?;
 
-    let token_checklist = generate_token_checklist(data.token, &data.client).await?;
+    let token_checklist = generate_token_checklist(&data.token, &data.client).await?;
 
     println!("token checklist => {:#?}", token_checklist);
 
@@ -56,9 +55,9 @@ async fn test_generate_checklist_base() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_generate_checklist_mainnet() -> anyhow::Result<()> {
     for token in WHITELIST_TOKENS_MAINNET {
-        let data = setup(token).await?;
+        let data = setup(token, &Chain::Mainnet).await?;
 
-        let token_checklist = generate_token_checklist(data.token, &data.client).await?;
+        let token_checklist = generate_token_checklist(&data.token, &data.client).await?;
 
         println!("token checklist => {:#?}", token_checklist);
 
@@ -66,7 +65,7 @@ async fn test_generate_checklist_mainnet() -> anyhow::Result<()> {
 
         println!("token score (rule based) => {:#?}", token_score);
 
-        let token_score_ai = get_token_score_with_ai(token_checklist, &AI_MODEL).await?;
+        let token_score_ai = get_token_score_with_ai(&token_checklist, &AI_MODEL).await?;
         println!("token score (ai) => {:#?}", token_score_ai);
     }
 
@@ -74,9 +73,9 @@ async fn test_generate_checklist_mainnet() -> anyhow::Result<()> {
 }
 
 /// get ERC20Token - struct that contains all data we need - from token address
-pub async fn setup(token_address: &str) -> Result<SetupData> {
+pub async fn setup(token_address: &str, chain: &Chain) -> Result<SetupData> {
     dotenv().ok();
-    let ws_url = CHAIN_DATA.get_address().ws_url.clone();
+    let ws_url = CHAIN_DATA.get_address(&Chain::Mainnet).ws_url.clone();
     let provider = Provider::<Ws>::connect(ws_url).await?;
     let client = Arc::new(provider.clone());
 
@@ -90,19 +89,14 @@ pub async fn setup(token_address: &str) -> Result<SetupData> {
 
     // get pair address of token, and is_token_0 , true if token is token_0, otherwise its token_1
     println!("get pair address..");
-    let (pair_address, is_token_0) =
-        get_token_uniswap_v2_pair_address(token_address_h160, &client).await?;
+    let dex = find_top_dex_for_token(token_address_h160, chain).await?;
 
     let token = ERC20Token {
         name,
         symbol,
         decimals,
         address: token_address_h160,
-        token_dex: TokenDex {
-            pair_or_pool_address: pair_address,
-            is_token_0,
-            ..Default::default()
-        },
+        token_dex: dex,
         ..Default::default()
     };
 

@@ -10,11 +10,6 @@ pub use uniswap_pair::*;
     non_camel_case_types
 )]
 pub mod uniswap_pair {
-    const _: () = {
-        ::core::include_bytes!(
-            "/Users/apmfree/Desktop/rust/learn_ethers/examples/abi/uniswap_pair.json",
-        );
-    };
     #[allow(deprecated)]
     fn __abi() -> ::ethers::core::abi::Abi {
         ::ethers::core::abi::ethabi::Contract {

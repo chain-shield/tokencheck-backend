@@ -10,9 +10,6 @@ pub use uniswap_quoter::*;
     non_camel_case_types
 )]
 pub mod uniswap_quoter {
-    const _: () = {
-        ::core::include_bytes!("/Users/apmfree/Desktop/rust/learn_ethers/examples/abi/quoter.json",);
-    };
     #[allow(deprecated)]
     fn __abi() -> ::ethers::core::abi::Abi {
         ::ethers::core::abi::ethabi::Contract {

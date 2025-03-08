@@ -1,12 +1,13 @@
 //! Utility functions for handling transaction amounts, wallet management, block information,
 //! and fee calculations.
 
+use crate::abi::uniswap_quoter::{QuoteExactInputSingleParams, UNISWAP_QUOTER};
 use crate::abi::uniswap_router_v2::UNISWAP_V2_ROUTER;
-use crate::app_config::CHAIN;
 use crate::data::chain_data::CHAIN_DATA;
 use anyhow::{anyhow, Context, Result};
 use ethers::core::k256::ecdsa::SigningKey;
-use ethers::types::{Address, Block, BlockNumber, H256, U256, U64};
+use ethers::types::{Address, Block, BlockNumber, Chain, H256, U256, U64};
+use ethers::utils::format_units;
 use ethers::{
     providers::{Middleware, Provider, Ws},
     signers::{LocalWallet, Signer, Wallet},
@@ -54,11 +55,12 @@ pub async fn get_amount_out_uniswap_v2(
     token_out: Address,
     amount_in: U256,
     slippage_tolerance: TxSlippage,
+    chain: &Chain,
     client: &Arc<Provider<Ws>>,
 ) -> anyhow::Result<U256> {
     // Parse the Uniswap V2 router address from the contract configuration.
     let uniswap_v2_router_address: Address = CHAIN_DATA
-        .get_address()
+        .get_address(chain)
         .uniswap_v2_router
         .parse()
         .context("Failed to parse Uniswap V2 router address")?;
@@ -72,16 +74,66 @@ pub async fn get_amount_out_uniswap_v2(
     let base_amount_out = amounts[amounts.len() - 1];
 
     // Adjust the base output amount based on the provided slippage tolerance.
-    let amount_out = match slippage_tolerance {
-        TxSlippage::TenPercent => base_amount_out * U256::from(90) / U256::from(100),
-        TxSlippage::FivePercent => base_amount_out * U256::from(95) / U256::from(100),
-        TxSlippage::TwoPercent => base_amount_out * U256::from(98) / U256::from(100),
-        TxSlippage::ThreePercent => base_amount_out * U256::from(97) / U256::from(100),
-        TxSlippage::OnePercent => base_amount_out * U256::from(99) / U256::from(100),
-        TxSlippage::None => base_amount_out,
-    };
+    let amount_out = amount_out_adjusted_for_slippage(base_amount_out, slippage_tolerance);
 
     Ok(amount_out)
+}
+
+/// Calculate the minimum amount of tokens expected from the swap on Uniswap V3.
+///
+/// # Arguments
+///
+/// * `token_in` - The address of the input token.
+/// * `token_out` - The address of the output token.
+/// * `fee` - The fee tier of the pool (e.g., 3000 for 0.3%).
+/// * `amount_in` - The amount of input tokens.
+/// * `slippage` - The slippage tolerance.
+/// * `chain` - The blockchain network.
+/// * `client` - The provider client.
+///
+/// # Returns
+///
+/// * [`anyhow::Result<U256>`] - The minimum amount of output tokens expected.
+pub async fn get_amount_out_uniswap_v3(
+    token_in: Address,
+    token_out: Address,
+    fee: u32,
+    amount_in: U256,
+    slippage: TxSlippage,
+    chain: &Chain,
+    client: &Arc<Provider<Ws>>,
+) -> anyhow::Result<U256> {
+    // Get the quoter contract address
+    let quoter_address: Address = CHAIN_DATA.get_address(chain).uniswap_v3_quoter.parse()?;
+
+    let quoter = UNISWAP_QUOTER::new(quoter_address, client.clone());
+
+    // Query the expected amount out from the quoter
+    let quote_params = QuoteExactInputSingleParams {
+        token_in,
+        token_out,
+        amount_in,
+        fee,
+        sqrt_price_limit_x96: U256::zero(), // No price limit
+    };
+
+    let (amount_out, _, _, _) = quoter.quote_exact_input_single(quote_params).call().await?;
+
+    let amount_out_min = amount_out_adjusted_for_slippage(amount_out, slippage);
+
+    Ok(amount_out_min)
+}
+
+pub fn amount_out_adjusted_for_slippage(base_amount: U256, slippage: TxSlippage) -> U256 {
+    // Adjust the base output amount based on the provided slippage tolerance.
+    match slippage {
+        TxSlippage::TenPercent => base_amount * U256::from(90) / U256::from(100),
+        TxSlippage::FivePercent => base_amount * U256::from(95) / U256::from(100),
+        TxSlippage::TwoPercent => base_amount * U256::from(98) / U256::from(100),
+        TxSlippage::ThreePercent => base_amount * U256::from(97) / U256::from(100),
+        TxSlippage::OnePercent => base_amount * U256::from(99) / U256::from(100),
+        TxSlippage::None => base_amount,
+    }
 }
 
 /// Returns a wallet instance using the private key specified in the environment variable
@@ -89,10 +141,10 @@ pub async fn get_amount_out_uniswap_v2(
 ///
 /// # Errors
 /// Fails if the environment variable `PRIVATE_KEY` is not set or if the key parsing fails.
-pub fn get_wallet() -> anyhow::Result<Wallet<SigningKey>> {
+pub fn get_wallet(chain: &Chain) -> anyhow::Result<Wallet<SigningKey>> {
     // Retrieve PRIVATE_KEY from environment, providing context on failure.
     let private_key = env::var("PRIVATE_KEY").context("PRIVATE_KEY not found in .env file")?;
-    let wallet = LocalWallet::from_str(&private_key)?.with_chain_id(CHAIN);
+    let wallet = LocalWallet::from_str(&private_key)?.with_chain_id(*chain as u64);
     Ok(wallet)
 }
 
@@ -100,10 +152,10 @@ pub fn get_wallet() -> anyhow::Result<Wallet<SigningKey>> {
 ///
 /// # Errors
 /// Fails if the environment variable `PRIVATE_KEY_2` is not set or if the key parsing fails.
-pub fn get_test_wallet() -> anyhow::Result<Wallet<SigningKey>> {
+pub fn get_test_wallet(chain: &Chain) -> anyhow::Result<Wallet<SigningKey>> {
     // Retrieve PRIVATE_KEY_2 from environment, providing context on failure.
     let private_key = env::var("PRIVATE_KEY_2").context("PRIVATE_KEY_2 not found in .env file")?;
-    let wallet = LocalWallet::from_str(&private_key)?.with_chain_id(CHAIN);
+    let wallet = LocalWallet::from_str(&private_key)?.with_chain_id(*chain as u64);
     Ok(wallet)
 }
 
@@ -229,7 +281,7 @@ pub fn test_amount_of_token_to_purchase() -> anyhow::Result<U256> {
         .context("TOKEN_TO_BUY_FOR_ANVIL_TEST is not set in .env")?;
     let amount_in = ethers::utils::parse_ether(amount_to_buy)?;
     // The following commented out code can be used for additional logging if necessary.
-    // let purchase_amount = format_units(amount_in, "ether")?;
-    // println!("buying {} of token", purchase_amount);
+    let purchase_amount = format_units(amount_in, "ether")?;
+    println!("buying {} of token", purchase_amount);
     Ok(amount_in)
 }

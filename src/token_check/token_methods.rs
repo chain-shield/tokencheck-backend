@@ -1,44 +1,29 @@
-//! This module provides functions for interacting with ERC20 tokens and
-//! liquidity pools on decentralized exchanges (e.g., Uniswap v2).
-//!
-//! It includes methods to query the total liquidity pool token supply,
-//! the total token supply, check if the token has sufficient liquidity,
-//! and verify if there is enough liquidity to execute a trade operation.
-//! These functions interact with on-chain contracts via an Ethereum provider
-//! connected using WebSocket (Ws).
-
 use ethers::providers::{Provider, Ws};
 use ethers::types::U256;
 use std::sync::Arc;
 
 use crate::abi::erc20::ERC20;
 use crate::abi::uniswap_pair::UNISWAP_PAIR;
-use crate::app_config::{MIN_LIQUIDITY, MIN_RESERVE_ETH_FACTOR, MIN_TRADE_FACTOR};
+use crate::abi::uniswap_pool::UNISWAP_V3_POOL;
+use crate::data::dex::Dex;
 use crate::data::token_data::ERC20Token;
-use crate::utils::tx::amount_of_token_to_purchase;
+use crate::dex::dex_data::TokenDexData;
 
 impl ERC20Token {
-    /// Returns the total number of liquidity pool (LP) tokens supplied on Uniswap v2.
-    ///
-    /// # Arguments
-    ///
-    /// * `client` - A reference-counted provider connected via WebSockets to an Ethereum node.
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(U256)` containing the total supply of LP tokens if successful.
-    /// * `Err(anyhow::Error)` if an error occurs during the contract call.
     pub async fn get_total_liquidity_token_supply(
         &self,
         client: &Arc<Provider<Ws>>,
     ) -> anyhow::Result<U256> {
-        // Connect to the Uniswap pair contract at the stored pair address.
-        let pool = UNISWAP_PAIR::new(self.token_dex.pair_or_pool_address, client.clone());
+        let token_dex = self
+            .clone()
+            .token_dex
+            .expect("is_liquidity_locked: no token dex found");
+        match token_dex.dex {
+            Dex::UniswapV2 => get_total_liquidity_token_supply_uniswap_v2(&token_dex, client).await,
+            Dex::UniswapV3 => get_total_liquidity_token_supply_uniswap_v3(&token_dex, client).await,
 
-        // Query the total supply of liquidity tokens.
-        let supply = pool.total_supply().call().await?;
-
-        Ok(supply)
+            _ => Ok(U256::zero()),
+        }
     }
 
     /// Returns the total number of tokens minted for this ERC20 contract.
@@ -62,107 +47,52 @@ impl ERC20Token {
 
         Ok(supply)
     }
+}
 
-    /// Checks if the token has enough liquidity based on a preset liquidity threshold.
-    ///
-    /// This function compares the available liquidity (specifically, the reserve of
-    /// the paired ETH supply) with a minimum liquidity requirement defined in the configuration.
-    ///
-    /// # Arguments
-    ///
-    /// * `client` - A reference-counted provider connected via WebSockets to an Ethereum node.
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(true)` if the liquidity is above the minimum threshold.
-    /// * `Ok(false)` if the liquidity is below the required threshold.
-    /// * `Err(anyhow::Error)` in case of an error during the contract call.
-    pub async fn has_enough_liquidity(&self, client: &Arc<Provider<Ws>>) -> anyhow::Result<bool> {
-        // Connect to the Uniswap pair contract.
-        let pool = UNISWAP_PAIR::new(self.token_dex.pair_or_pool_address, client.clone());
+/// Returns the total number of liquidity pool (LP) tokens supplied on Uniswap v2.
+///
+/// # Arguments
+///
+/// * `client` - A reference-counted provider connected via WebSockets to an Ethereum node.
+///
+/// # Returns
+///
+/// * `Ok(U256)` containing the total supply of LP tokens if successful.
+/// * `Err(anyhow::Error)` if an error occurs during the contract call.
+pub async fn get_total_liquidity_token_supply_uniswap_v2(
+    token_dex: &TokenDexData,
+    client: &Arc<Provider<Ws>>,
+) -> anyhow::Result<U256> {
+    // Connect to the Uniswap pair contract at the stored pair address.
+    let pool = UNISWAP_PAIR::new(token_dex.pair_address, client.clone());
 
-        // Retrieve the current reserves from the liquidity pool.
-        let (reserve0, reserve1, _) = pool.get_reserves().call().await?;
+    // Query the total supply of liquidity tokens.
+    let supply = pool.total_supply().call().await?;
 
-        // Determine which reserve corresponds to ETH based on token position.
-        let eth_supply = if self.token_dex.is_token_0 {
-            reserve1
-        } else {
-            reserve0
-        };
+    Ok(supply)
+}
 
-        Ok(eth_supply >= MIN_LIQUIDITY)
-    }
+/// Returns the total number of liquidity pool (LP) tokens supplied on Uniswap v3.
+///
+/// # Arguments
+///
+/// * `client` - A reference-counted provider connected via WebSockets to an Ethereum node.
+///
+/// # Returns
+///
+/// * `Ok(U256)` containing the total supply of LP tokens if successful.
+/// * `Err(anyhow::Error)` if an error occurs during the contract call.
+pub async fn get_total_liquidity_token_supply_uniswap_v3(
+    token_dex: &TokenDexData,
+    client: &Arc<Provider<Ws>>,
+) -> anyhow::Result<U256> {
+    // Connect to the Uniswap pair contract at the stored pair address.
+    let pool = UNISWAP_V3_POOL::new(token_dex.pair_address, client.clone());
 
-    /// Retrieves the liquidity value from the pool.
-    ///
-    /// This function returns the current amount of ETH supply available in the liquidity pool.
-    ///
-    /// # Arguments
-    ///
-    /// * `client` - A reference-counted provider connected via WebSockets to an Ethereum node.
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(u128)` containing the liquidity value (ETH supply).
-    /// * `Err(anyhow::Error)` if an error occurs during the contract call.
-    pub async fn get_liquidity(&self, client: &Arc<Provider<Ws>>) -> anyhow::Result<u128> {
-        // Connect to the Uniswap pair contract.
-        let pool = UNISWAP_PAIR::new(self.token_dex.pair_or_pool_address, client.clone());
+    // TODO - EDGE CASE - liquidity() is not same as number of liquidity tokens! resolve this
+    // issue.
+    // Query the supply of liquidity
+    let supply = pool.liquidity().call().await?;
 
-        // Retrieve the reserves data.
-        let (reserve0, reserve1, _) = pool.get_reserves().call().await?;
-
-        // Determine the ETH-based liquidity depending on token arrangement.
-        let eth_supply = if self.token_dex.is_token_0 {
-            reserve1
-        } else {
-            reserve0
-        };
-
-        Ok(eth_supply)
-    }
-
-    /// Checks if there is sufficient liquidity for a trade.
-    ///
-    /// This function evaluates whether the liquidity pool can support a trade operation.
-    /// It verifies both the token supply and the ETH reserve against minimum trade and reserve factors.
-    ///
-    /// # Arguments
-    ///
-    /// * `tokens_to_sell` - The amount of tokens intended to be sold.
-    /// * `client` - A reference-counted provider connected via WebSockets to an Ethereum node.
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(true)` if the liquidity is adequate for the trade.
-    /// * `Ok(false)` if the liquidity conditions are not met.
-    /// * `Err(anyhow::Error)` if there is an error during interaction with the contract.
-    pub async fn has_enough_liquidity_for_trade(
-        &self,
-        tokens_to_sell: U256,
-        client: &Arc<Provider<Ws>>,
-    ) -> anyhow::Result<bool> {
-        // Connect to the Uniswap pair contract.
-        let pool = UNISWAP_PAIR::new(self.token_dex.pair_or_pool_address, client.clone());
-
-        // Calculate the amount of tokens required to execute the trade.
-        let eth_amount_used_for_purchase = amount_of_token_to_purchase()?;
-
-        // Retrieve the reserves available in the liquidity pool.
-        let (reserve0, reserve1, _) = pool.get_reserves().call().await?;
-
-        // Based on the token's position in the pair, assign the proper reserves for ETH and token supplies.
-        let (eth_supply, token_supply) = if self.token_dex.is_token_0 {
-            (reserve1, reserve0)
-        } else {
-            (reserve0, reserve1)
-        };
-
-        // Verify that both token supply and ETH reserve meet the minimum requirements for a safe trade.
-        let enough_liquidity = tokens_to_sell * MIN_TRADE_FACTOR < U256::from(token_supply)
-            && eth_amount_used_for_purchase * MIN_RESERVE_ETH_FACTOR < U256::from(eth_supply);
-
-        Ok(enough_liquidity)
-    }
+    Ok(U256::from(supply))
 }

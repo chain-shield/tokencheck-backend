@@ -1,3 +1,4 @@
+use crate::app_config::{THEGRAPH_BASE_URL, UNISWAP_V2_MAINNET_SUBGRAPH_ID};
 use crate::token_check::check_token_lock::TokenHolders;
 use crate::utils::type_conversion::{address_to_string, f64_to_u256};
 use anyhow::Result;
@@ -6,10 +7,7 @@ use reqwest::Client;
 use serde::Deserialize;
 use std::collections::HashMap;
 
-/// Base URL for TheGraph API.
-const THEGRAPH_BASE_URL: &str = "https://gateway.thegraph.com/api";
-/// Uniswap V2 subgraph ID used for querying liquidity positions.
-const UNISWAP_V2_SUBGRAPH_ID: &str = "EYCKATKGBKLWvSfwvBjzfCBmGwYNdVkduYXVivCsLRFu";
+use super::shared::get_thegraph_api_key;
 
 /// Generic structure for parsing GraphQL responses.
 ///
@@ -69,11 +67,11 @@ struct LiquidityUser {
 /// - TheGraph API call fails or returns a non-successful HTTP status.
 /// - The response parsing fails.
 /// - Parsing or converting the liquidity token balance fails.
-pub async fn fetch_uniswap_lp_holders(pair_address: Address) -> Result<Vec<TokenHolders>> {
+pub async fn fetch_uniswap_v2_lp_holders(pair_address: Address) -> Result<Vec<TokenHolders>> {
     // Construct the GraphQL query for liquidity positions filtered by the given pair address.
     let query = format!(
         r#"{{
-            liquidityPositions(where: {{ pair: "{pair}" }}, first: 100) {{
+            liquidityPositions(where: {{ pair: "{pair}" }}, first: 1000) {{
                 user {{ id }}
                 liquidityTokenBalance
             }}
@@ -91,7 +89,7 @@ pub async fn fetch_uniswap_lp_holders(pair_address: Address) -> Result<Vec<Token
     // Construct the full GraphQL URL including the API key and subgraph ID.
     let graphql_url = format!(
         "{}/{}/subgraphs/id/{}",
-        THEGRAPH_BASE_URL, thegraph_api_key, UNISWAP_V2_SUBGRAPH_ID
+        THEGRAPH_BASE_URL, thegraph_api_key, UNISWAP_V2_MAINNET_SUBGRAPH_ID
     );
 
     // Send the POST request and ensure the HTTP status is 200 (OK).
@@ -120,22 +118,4 @@ pub async fn fetch_uniswap_lp_holders(pair_address: Address) -> Result<Vec<Token
     }
 
     Ok(result_vec)
-}
-
-/// Retrieves TheGraph API key from the environment.
-///
-/// The function expects the `THEGRAPH_API_KEY` environment variable to be set. If it's not set,
-/// an error is returned.
-///
-/// # Returns
-///
-/// - `anyhow::Result<String>`: The API key as a string, or an error if the environment variable is not set.
-///
-/// # Errors
-///
-/// Returns an error if the `THEGRAPH_API_KEY` environment variable is missing.
-fn get_thegraph_api_key() -> anyhow::Result<String> {
-    // Retrieve the API key from the environment variable, propagating the error if not set.
-    let thegraph_key = std::env::var("THEGRAPH_API_KEY")?;
-    Ok(thegraph_key)
 }

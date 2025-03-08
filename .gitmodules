@@ -1,0 +1,3 @@
+[submodule "src/http-server"]
+	path = src/http-server
+	url = https://mar8@github.com/mar8/http-server.git

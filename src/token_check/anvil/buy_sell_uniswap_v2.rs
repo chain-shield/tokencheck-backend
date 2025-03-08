@@ -6,6 +6,7 @@ use crate::abi::erc20::ERC20;
 use crate::abi::uniswap_router_v2::UNISWAP_V2_ROUTER;
 use crate::data::chain_data::CHAIN_DATA;
 use crate::data::token_data::ERC20Token;
+use crate::dex::dex_data::TokenDexData;
 use crate::token_check::anvil::tx_trait::Txs;
 use crate::utils::tx::{get_amount_out_uniswap_v2, test_amount_of_token_to_purchase, TxSlippage};
 use ethers::types::Address;
@@ -34,23 +35,34 @@ impl AnvilTestSimulator {
     /// # Returns
     ///
     /// * [`anyhow::Result<U256>`] - Returns the updated token balance after the purchase.
-    pub async fn simulate_buying_token_for_weth(&self, token: &ERC20Token) -> anyhow::Result<U256> {
-        let router_address: Address = CHAIN_DATA.get_address().uniswap_v2_router.parse()?;
-        let weth_address: Address = CHAIN_DATA.get_address().weth.parse()?;
+    pub async fn simulate_buying_token_on_uniswap_v2_for_weth(
+        &self,
+        dex_data: &TokenDexData,
+        token: &ERC20Token,
+    ) -> anyhow::Result<U256> {
+        let router_address: Address = CHAIN_DATA
+            .get_address(&token.chain)
+            .uniswap_v2_router
+            .parse()?;
+
+        // TODO - NEED TO FIRST PURCHASE BASE TOKEN if not WETH
 
         let mut new_token_balance = U256::from(0);
         let router = UNISWAP_V2_ROUTER::new(router_address, self.signed_client.clone());
 
         // Ensure the wallet has sufficient ETH
-        self.get_wallet_eth_balance().await?;
+        let base_token_address: Address = dex_data.base_token_address.parse()?;
+        self.get_wallet_token_balance_by_address(base_token_address)
+            .await?;
         let amount_in = test_amount_of_token_to_purchase()?;
 
         // Calculate the minimum amount of token expected from the swap based on slippage settings.
         let amount_out_min = get_amount_out_uniswap_v2(
-            weth_address,
+            base_token_address,
             token.address,
             amount_in,
             TxSlippage::FivePercent,
+            &token.chain,
             &self.client,
         )
         .await?;
@@ -67,7 +79,7 @@ impl AnvilTestSimulator {
         let tx = router
             .swap_exact_eth_for_tokens(
                 amount_out_min,
-                vec![weth_address, token.address],
+                vec![base_token_address, token.address],
                 self.sender,
                 U256::from(deadline),
             )
@@ -103,7 +115,8 @@ impl AnvilTestSimulator {
                 new_token_balance = self
                     .get_wallet_token_balance_by_address(token.address)
                     .await?;
-                self.get_wallet_eth_balance().await?;
+                self.get_wallet_token_balance_by_address(base_token_address)
+                    .await?;
             }
             Err(tx_err) => {
                 // Transaction sending failed; log the error details.
@@ -138,19 +151,25 @@ impl AnvilTestSimulator {
     /// # Returns
     ///
     /// * [`anyhow::Result<U256>`] - Returns the updated token balance after selling the token.
-    pub async fn simulate_selling_token_for_weth(
+    pub async fn simulate_selling_token_on_uniswap_v2_for_weth(
         &self,
+        dex_data: &TokenDexData,
         token: &ERC20Token,
     ) -> anyhow::Result<U256> {
-        let router_address: Address = CHAIN_DATA.get_address().uniswap_v2_router.parse()?;
-        let weth_address: Address = CHAIN_DATA.get_address().weth.parse()?;
+        let router_address: Address = CHAIN_DATA
+            .get_address(&token.chain)
+            .uniswap_v2_router
+            .parse()?;
         let token_contract = ERC20::new(token.address, self.signed_client.clone());
+        let base_token_address: Address = dex_data.base_token_address.parse()?;
 
         let mut new_token_balance = U256::from(0);
         let router = UNISWAP_V2_ROUTER::new(router_address, self.signed_client.clone());
 
         println!("........................................................");
-        self.get_wallet_eth_balance().await?;
+        self.get_wallet_token_balance_by_address(base_token_address)
+            .await?;
+
         let amount_to_sell = self
             .get_wallet_token_balance_by_address(token.address)
             .await?;
@@ -164,9 +183,10 @@ impl AnvilTestSimulator {
         // Calculate the minimum amount of WETH that should be received.
         let amount_out_min = get_amount_out_uniswap_v2(
             token.address,
-            weth_address,
+            base_token_address,
             amount_to_sell,
             TxSlippage::FivePercent,
+            &token.chain,
             &self.client,
         )
         .await?;
@@ -180,7 +200,7 @@ impl AnvilTestSimulator {
         let tx = router.swap_exact_tokens_for_eth(
             amount_to_sell,
             amount_out_min,
-            vec![token.address, weth_address],
+            vec![token.address, base_token_address],
             self.sender,
             U256::from(deadline),
         );
@@ -207,7 +227,9 @@ impl AnvilTestSimulator {
                 new_token_balance = self
                     .get_wallet_token_balance_by_address(token.address)
                     .await?;
-                self.get_wallet_eth_balance().await?;
+
+                self.get_wallet_token_balance_by_address(base_token_address)
+                    .await?;
             }
             Err(tx_err) => {
                 // Log failure details for debugging.

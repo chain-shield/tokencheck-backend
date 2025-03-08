@@ -112,10 +112,11 @@ pub trait Txs {
         // Log the start of the token balance retrieval.
         println!("getting token balance");
         let token_contract = ERC20::new(token_address, self.signed_client());
+        let name = token_contract.name().call().await?;
 
         // Call the ERC20 contract's balance_of method for the sender.
         let new_token_balance_u256 = token_contract.balance_of(self.sender()).call().await?;
-        println!("token balance = {}", new_token_balance_u256);
+        println!("{} token balance = {}", name, new_token_balance_u256);
 
         Ok(new_token_balance_u256)
     }

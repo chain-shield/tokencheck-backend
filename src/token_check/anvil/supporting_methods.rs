@@ -1,10 +1,5 @@
 use super::simlator::AnvilTestSimulator;
 use crate::abi::erc20::ERC20;
-use crate::abi::uniswap_factory_v2::UNISWAP_V2_FACTORY;
-use crate::data::chain_data::CHAIN_DATA;
-use crate::data::token_data::ERC20Token;
-use crate::token_check::anvil::tx_trait::Txs;
-use crate::utils::type_conversion::address_to_string;
 use anyhow::Result;
 use ethers::types::{
     CallFrame, GethDebugTracerType, GethDebugTracingOptions, GethTrace, GethTraceFrame, H256, U256,
@@ -92,44 +87,6 @@ impl AnvilTestSimulator {
             .transfer(self.signed_client.address(), amount)
             .send()
             .await?;
-
-        Ok(())
-    }
-
-    /// Displays the Uniswap V2 pair address for a given token.
-    ///
-    /// This function queries the Uniswap V2 factory contract to retrieve the pair address for the
-    /// token and WETH. The order of arguments depends on the token's position (token0 vs. token1).
-    /// It then logs both the fetched and the stored (real) pair addresses.
-    ///
-    /// # Parameters
-    /// - `token`: A reference to an `ERC20Token` structure containing details about the token.
-    ///
-    /// # Returns
-    /// - `Result<()>`: Returns Ok if the pair address is successfully retrieved, or an error otherwise.
-    pub async fn show_eth_uniswap_v2_pair(&self, token: &ERC20Token) -> anyhow::Result<()> {
-        // Retrieve addresses for the Uniswap V2 Factory and WETH contracts.
-        let factory_address: Address = CHAIN_DATA.get_address().uniswap_v2_factory.parse()?;
-        let weth_address: Address = CHAIN_DATA.get_address().weth.parse()?;
-
-        // Create an instance of the Uniswap V2 Factory contract.
-        let factory = UNISWAP_V2_FACTORY::new(factory_address, self.signed_client());
-
-        // Depending on the token orientation, query the appropriate pair.
-        if token.token_dex.is_token_0 {
-            let pair_address = factory.get_pair(token.address, weth_address).call().await?;
-            debug!("pair address for WETH-{}: {:?}", token.name, pair_address);
-        } else {
-            let pair_address = factory.get_pair(weth_address, token.address).call().await?;
-            debug!("pair address for WETH-{}: {:?}", token.name, pair_address);
-        }
-
-        // Convert the stored pair address to a string and log it.
-        let pair_address = address_to_string(token.token_dex.pair_or_pool_address);
-        debug!(
-            "REAL pair address for WETH-{}: {:?}",
-            token.name, pair_address
-        );
 
         Ok(())
     }
