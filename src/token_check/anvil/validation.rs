@@ -46,18 +46,23 @@ impl ERC20Token {
         let ws_url = CHAIN_DATA.get_address(&self.chain).ws_url.clone();
         let anvil = AnvilTestSimulator::new(&ws_url, &self.chain).await?;
 
+        let top_dex_data = self
+            .clone()
+            .token_dex
+            .expect("is_liquidity_locked: no token dex found");
+
         println!("validating token...");
 
         // Attempt to buy the token using the anvil simulator.
-        let buy_result = match self.token_dex.dex {
+        let buy_result = match top_dex_data.dex {
             Dex::UniswapV2 => {
                 anvil
-                    .simulate_buying_token_on_uniswap_v2_for_weth(self)
+                    .simulate_buying_token_on_uniswap_v2_for_weth(&top_dex_data, self)
                     .await
             }
             Dex::UniswapV3 => {
                 anvil
-                    .simulate_buying_token_on_uniswap_v3_for_weth(self)
+                    .simulate_buying_token_on_uniswap_v3_for_weth(&top_dex_data, self)
                     .await
             }
             _ => return Ok(TokenStatus::CannotBuy),
@@ -118,15 +123,15 @@ impl ERC20Token {
         // Attempt to sell the token.
         println!("simulate selling token for validation");
         // Attempt to buy the token using the anvil simulator.
-        let sell_result = match self.token_dex.dex {
+        let sell_result = match top_dex_data.dex {
             Dex::UniswapV2 => {
                 anvil
-                    .simulate_selling_token_on_uniswap_v2_for_weth(self)
+                    .simulate_selling_token_on_uniswap_v2_for_weth(&top_dex_data, self)
                     .await
             }
             Dex::UniswapV3 => {
                 anvil
-                    .simulate_selling_token_on_uniswap_v3_for_weth(self)
+                    .simulate_selling_token_on_uniswap_v3_for_weth(&top_dex_data, self)
                     .await
             }
             _ => return Ok(TokenStatus::CannotBuy),

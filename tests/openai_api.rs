@@ -1,7 +1,8 @@
 use anyhow::Result;
 use chainshield_backend::data::chain_data::CHAIN_DATA;
 use chainshield_backend::data::dex::TokenDex;
-use chainshield_backend::data::token_data::{get_token_uniswap_v2_pair_address, ERC20Token};
+use chainshield_backend::data::token_data::ERC20Token;
+use chainshield_backend::dex::dex_data::find_top_dex_for_token;
 use chainshield_backend::token_check::external_api::moralis;
 use chainshield_backend::token_check::token_holder_check::get_token_holder_check;
 use chainshield_backend::utils::logging::setup_logger;
@@ -236,19 +237,14 @@ pub async fn setup(token_address: &str, chain: &Chain) -> Result<SetupData> {
 
     // get pair address of token, and is_token_0 , true if token is token_0, otherwise its token_1
     println!("get pair address..");
-    let (pair_address, is_token_0) =
-        get_token_uniswap_v2_pair_address(token_address_h160, chain, &client).await?;
+    let dex = find_top_dex_for_token(token_address_h160, chain).await?;
 
     let token = ERC20Token {
         name,
         symbol,
         decimals,
         address: token_address_h160,
-        token_dex: TokenDex {
-            pair_or_pool_address: pair_address,
-            is_token_0,
-            ..Default::default()
-        },
+        token_dex: dex,
         ..Default::default()
     };
 

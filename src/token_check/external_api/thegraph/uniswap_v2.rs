@@ -1,3 +1,4 @@
+use crate::app_config::{THEGRAPH_BASE_URL, UNISWAP_V2_MAINNET_SUBGRAPH_ID};
 use crate::token_check::check_token_lock::TokenHolders;
 use crate::utils::type_conversion::{address_to_string, f64_to_u256};
 use anyhow::Result;
@@ -6,7 +7,7 @@ use reqwest::Client;
 use serde::Deserialize;
 use std::collections::HashMap;
 
-use super::shared::{get_thegraph_api_key, THEGRAPH_BASE_URL, UNISWAP_V2_SUBGRAPH_ID};
+use super::shared::get_thegraph_api_key;
 
 /// Generic structure for parsing GraphQL responses.
 ///
@@ -88,7 +89,7 @@ pub async fn fetch_uniswap_v2_lp_holders(pair_address: Address) -> Result<Vec<To
     // Construct the full GraphQL URL including the API key and subgraph ID.
     let graphql_url = format!(
         "{}/{}/subgraphs/id/{}",
-        THEGRAPH_BASE_URL, thegraph_api_key, UNISWAP_V2_SUBGRAPH_ID
+        THEGRAPH_BASE_URL, thegraph_api_key, UNISWAP_V2_MAINNET_SUBGRAPH_ID
     );
 
     // Send the POST request and ensure the HTTP status is 200 (OK).

@@ -4,9 +4,7 @@ use chainshield_backend::data::provider_manager::get_chain_provider;
 use chainshield_backend::data::token_checklist_cache::get_token_checklist;
 use chainshield_backend::data::token_data::get_core_token_data_by_address;
 use chainshield_backend::token_check::token_checklist::generate_token_checklist;
-use chainshield_backend::token_check::token_score::{
-    get_token_score_with_ai, get_token_score_with_rules_based_approch,
-};
+use chainshield_backend::token_check::token_score::get_token_score_with_ai;
 use chainshield_backend::utils::logging::setup_logger;
 use dotenv::dotenv;
 use ethers::types::Address;
@@ -21,15 +19,77 @@ pub const WHITELIST_TOKENS_MAINNET: [&str; 4] = [
 ];
 
 #[tokio::test]
+#[ignore]
+async fn test_checklist_is_generated_with_link() -> anyhow::Result<()> {
+    dotenv().ok();
+    setup_logger().expect("Failed to initialize logger.");
+
+    let link = "0x514910771af9ca656af840dff83e8264ecf986ca";
+
+    let token_checklist = match get_token_checklist(link).await {
+        Some(checklist) => checklist,
+        None => {
+            if let Some(token_data) = get_core_token_data_by_address(link).await? {
+                let client = get_chain_provider(&token_data.chain).await?;
+                let checklist = generate_token_checklist(&token_data, &client).await?;
+                checklist
+            } else {
+                return Err(anyhow!(
+                    "could not get token data, address may not be valid"
+                ));
+            }
+        }
+    };
+
+    info!("token checklist => {:#?}", token_checklist);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore]
+async fn test_checklist_and_token_score_generation_with_link() -> anyhow::Result<()> {
+    dotenv().ok();
+    setup_logger().expect("Failed to initialize logger.");
+
+    let link = "0x514910771af9ca656af840dff83e8264ecf986ca";
+
+    let token_checklist = match get_token_checklist(link).await {
+        Some(checklist) => checklist,
+        None => {
+            if let Some(token_data) = get_core_token_data_by_address(&link).await? {
+                let client = get_chain_provider(&token_data.chain).await?;
+                let checklist = generate_token_checklist(&token_data, &client).await?;
+                checklist
+            } else {
+                return Err(anyhow!(
+                    "could not get token data, address may not be valid"
+                ));
+            }
+        }
+    };
+
+    info!("token checklist => {:#?}", token_checklist);
+
+    // TODO - SAVE TOKEN CHECKLIST TO CACHE
+
+    // Calculate token score using AI model
+    let token_score_ai = get_token_score_with_ai(&token_checklist, &AI_MODEL).await?;
+    info!("token score (ai) => {:#?}", token_score_ai);
+
+    // TODO - Create Cache for token score
+    //
+    Ok(())
+}
+
+#[tokio::test]
 async fn test_checklist_and_token_score_generation() -> anyhow::Result<()> {
     dotenv().ok();
     setup_logger().expect("Failed to initialize logger.");
 
     // THIS IS FOR TESTING PURPOSES - WILL BE REPLACED BY SERVER CODE
     for token in WHITELIST_TOKENS_MAINNET {
-        let token_address: Address = token.parse()?;
-
-        let token_checklist = match get_token_checklist(token_address).await {
+        let token_checklist = match get_token_checklist(token).await {
             Some(checklist) => checklist,
             None => {
                 if let Some(token_data) = get_core_token_data_by_address(&token).await? {
@@ -46,17 +106,8 @@ async fn test_checklist_and_token_score_generation() -> anyhow::Result<()> {
 
         info!("token checklist => {:#?}", token_checklist);
 
-        // TODO - SAVE TOKEN CHECKLIST TO CACHE
-
-        // Calculate token score based on predefined rules
-        let token_score = get_token_score_with_rules_based_approch(token_checklist.clone());
-
-        // TODO - CREATE CACHE FOR TOKEN SCORE AND SAVE SCORE TO CACHE
-
-        info!("token score (rule based) => {:#?}", token_score);
-
         // Calculate token score using AI model
-        let token_score_ai = get_token_score_with_ai(token_checklist, &AI_MODEL).await?;
+        let token_score_ai = get_token_score_with_ai(&token_checklist, &AI_MODEL).await?;
         info!("token score (ai) => {:#?}", token_score_ai);
     }
 

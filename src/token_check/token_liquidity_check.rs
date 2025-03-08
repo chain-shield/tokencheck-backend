@@ -75,7 +75,6 @@ pub async fn get_percentage_liquidity_locked_or_burned(
     token: &ERC20Token,
     client: &Arc<Provider<Ws>>,
 ) -> Result<Option<f64>> {
-    // TODO - UPDATE to pass dex used
     // Retrieve total supply for the liquidity token.
     let total_supply = token.get_total_liquidity_token_supply(client).await?;
 
@@ -84,8 +83,12 @@ pub async fn get_percentage_liquidity_locked_or_burned(
         // For Chain::Mainnet, fetch token holders using Uniswap's Graph API.
         fetch_lp_holders(token).await?
     } else {
+        let token_dex = token
+            .clone()
+            .token_dex
+            .expect("is_liquidity_locked: no token dex found");
         // For L2s, convert the pair address and use the Moralis API.
-        let pair_address = address_to_string(token.token_dex.pair_or_pool_address);
+        let pair_address = address_to_string(token_dex.pair_address);
         moralis::get_token_holder_list(&pair_address, &token.chain).await?
     };
 

@@ -43,7 +43,7 @@ pub struct TokenCheckList {
     /// The percentage of liquidity tokens that are locked or burned.
     pub percentage_liquidity_locked_or_burned: Option<f64>,
     /// The liquidity in wei for the token.
-    pub liquidity_in_wei: u128,
+    pub liquidity_in_usd: f64,
 
     // Fields derived from online presence checks
     /// Indicates whether the token has a website.
@@ -103,31 +103,43 @@ pub async fn generate_token_checklist(
         None => TokenHolderCheck::default(),
     };
 
-    // Step 4: Retrieve liquidity information.
-    println!("4. getting liquidity...");
-    // TODO - setup so works with any dex
-    let liquidity_in_eth = token.get_liquidity(client).await?;
+    // default values if Token is NOT on a dex
+    let mut liquidity_in_usd = 0.0;
+    let mut percentage_liquidity_locked_or_burned: Option<f64> = None;
+    let mut is_token_sellable: Option<bool> = None;
+
+    // below only works if token is on a dex ,check that
+    match token.clone().token_dex {
+        Some(token_dex) => {
+            // Step 4: Retrieve liquidity information.
+            println!("4. getting liquidity...");
+            // TODO - setup so works with any dex
+            liquidity_in_usd = token_dex.liquidity_in_usd;
+
+            // Step 6: Retrieve the percentage of tokens that are locked or burned.
+            println!("5. getting % liquidity burned or locked...");
+            percentage_liquidity_locked_or_burned =
+                get_percentage_liquidity_locked_or_burned(&token, client).await?;
+
+            // Step 7: Simulate a buy/sell to check token sellability.
+            println!("6. running buy / sell simulation with anvil...");
+            let token_status_from_simulated_buy_sell =
+                token.validate_with_simulated_buy_sell().await?;
+
+            is_token_sellable = match token_status_from_simulated_buy_sell {
+                TokenStatus::CannotSell => Some(false),
+                TokenStatus::Legit => Some(true),
+                TokenStatus::CannotBuy => None,
+            };
+        }
+        None => {}
+    }
 
     // Step 5: Check for online presence details of the token.
-    println!("5. getting online presence...");
+    println!("7. getting online presence...");
     let token_online_presense = match moralis::get_token_info(&token_address, &token.chain).await? {
         Some(online_presense) => online_presense,
         None => TokenWebData::default(),
-    };
-
-    // Step 6: Retrieve the percentage of tokens that are locked or burned.
-    println!("6. getting % liquidity burned or locked...");
-    let percentage_liquidity_locked_or_burned =
-        get_percentage_liquidity_locked_or_burned(&token, client).await?;
-
-    // Step 7: Simulate a buy/sell to check token sellability.
-    println!("7. running buy / sell simulation with anvil...");
-    let token_status_from_simulated_buy_sell = token.validate_with_simulated_buy_sell().await?;
-
-    let is_token_sellable = match token_status_from_simulated_buy_sell {
-        TokenStatus::CannotSell => Some(false),
-        TokenStatus::Legit => Some(true),
-        TokenStatus::CannotBuy => None,
     };
 
     // Construct the final TokenCheckList with data from all the above validations.
@@ -143,7 +155,7 @@ pub async fn generate_token_checklist(
         percentage_of_tokens_locked_or_burned: token_holder_check
             .percentage_tokens_burned_or_locked,
         percentage_liquidity_locked_or_burned,
-        liquidity_in_wei: liquidity_in_eth,
+        liquidity_in_usd,
         has_website: !token_online_presense.website.is_empty(),
         has_twitter_or_discord: !token_online_presense.twitter.is_empty()
             || !token_online_presense.discord.is_empty(),
