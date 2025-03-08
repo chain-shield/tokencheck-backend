@@ -1,20 +1,20 @@
 //! This module provides functionality to retrieve ERC20 token information
-//! along with its associated Uniswap V2 pair data.
+//! along with its associated DEX pair data with the highest liquidity.
 
 use super::provider_manager::get_chain_provider;
 use crate::abi::erc20::ERC20;
 use crate::app_config::CHAINS;
-use crate::dex::dex_data::{find_top_dex_for_token, TokenDexData};
-use anyhow::{anyhow, Result};
+use crate::dex::dex_data::{TokenDexData, find_top_dex_for_token};
+use anyhow::{Result, anyhow};
 use ethers::contract::ContractError;
 use ethers::providers::{Provider, ProviderError, Ws};
 use ethers::types::{Address, Chain};
 use log::{debug, error, info};
 
-/// Represents an ERC20 token along with its associated Uniswap pair data.
+/// Represents an ERC20 token along with its associated DEX pair data.
 #[derive(Clone, Default, Debug)]
 pub struct ERC20Token {
-    /// chain id
+    /// The blockchain network ID where this token exists
     pub chain: Chain,
     /// The token's full name.
     pub name: String,
@@ -24,32 +24,36 @@ pub struct ERC20Token {
     pub decimals: u8,
     /// The token's contract address.
     pub address: Address,
-
+    /// Optional DEX data for the token, containing information about the most liquid pair
     pub token_dex: Option<TokenDexData>,
 }
 
 /// Fetches and constructs an `ERC20Token` from a given token address.
 ///
+/// This function attempts to:
+/// 1. Validate the token address
+/// 2. Determine which blockchain the token exists on
+/// 3. Fetch basic token information (name, symbol, decimals)
+/// 4. Find the DEX with the highest liquidity for this token
+///
 /// # Arguments
 ///
 /// * `token_address` - A string slice representing the token's address.
-/// * `client` - An `Arc` wrapped provider of type `Provider<Ws>` used to interact
-///   with the Ethereum node.
 ///
 /// # Returns
 ///
-/// * `Result<Option<ERC20Token>>` - On success, returns an `Option` with the token info.
-///   If the token does not exist or an error occurs during the RPC calls, an appropriate error is returned.
+/// * `Result<Option<ERC20Token>>` - On success, returns `Some(ERC20Token)` with the token info.
+///   Returns `None` if the token address is invalid or the token cannot be found on any chain.
+///   Returns an error if there's a network issue or other problem during data retrieval.
 ///
 /// # Example
 ///
 /// ```ignore
-/// let token = get_erc20_by_token_address("0x...", client).await?;
+/// let token = get_core_token_data_by_address("0x...").await?;
 /// if let Some(token_info) = token {
 ///     println!("Token symbol: {}", token_info.symbol);
 /// }
 /// ```
-///
 pub async fn get_core_token_data_by_address(token_address: &str) -> Result<Option<ERC20Token>> {
     info!("Setting up token contract...");
 
@@ -99,6 +103,20 @@ pub async fn get_core_token_data_by_address(token_address: &str) -> Result<Optio
     Ok(Some(token))
 }
 
+/// Determines which blockchain network a token exists on by checking multiple chains.
+///
+/// This function iterates through the configured chains and attempts to call
+/// standard ERC20 methods on each chain to verify the token's existence.
+///
+/// # Arguments
+///
+/// * `token_address` - The Ethereum address of the token to locate
+///
+/// # Returns
+///
+/// * `Result<Option<Chain>>` - On success, returns `Some(Chain)` with the identified chain.
+///   Returns `None` if the token cannot be found on any chain.
+///   Returns an error if there's a network issue during the search.
 pub async fn find_chain_token_is_from(token_address: Address) -> anyhow::Result<Option<Chain>> {
     // loop through L1,L2 clients to find which chain token is from
     for chain in CHAINS {
@@ -111,7 +129,7 @@ pub async fn find_chain_token_is_from(token_address: Address) -> anyhow::Result<
             if is_network_error(e) {
                 return Err(anyhow!("Network error on chain {:?}: {:?}", chain, e));
             }
-            // If name() fails (e.g., contract doesn’t exist), skip to next chain
+            // If name() fails (e.g., contract doesn't exist), skip to next chain
             continue;
         }
 
@@ -131,7 +149,7 @@ pub async fn find_chain_token_is_from(token_address: Address) -> anyhow::Result<
             continue;
         }
 
-        // If all calls succeed, we’ve found the chain
+        // If all calls succeed, we've found the chain
         if name_result.is_ok() && symbol_result.is_ok() && supply_result.is_ok() {
             return Ok(Some(chain));
         }
@@ -140,6 +158,19 @@ pub async fn find_chain_token_is_from(token_address: Address) -> anyhow::Result<
     Ok(None)
 }
 
+/// Determines if a contract error is related to network connectivity issues.
+///
+/// This helper function distinguishes between errors that indicate a contract
+/// doesn't exist (which should be handled by trying another chain) versus
+/// actual network connectivity problems that should halt execution.
+///
+/// # Arguments
+///
+/// * `error` - The contract error to check
+///
+/// # Returns
+///
+/// * `bool` - `true` if the error is a network-related error, `false` otherwise
 pub fn is_network_error(error: &ContractError<Provider<Ws>>) -> bool {
     match error {
         ContractError::ProviderError { e } => {
