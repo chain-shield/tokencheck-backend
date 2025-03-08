@@ -117,12 +117,12 @@ pub async fn generate_token_checklist(
             liquidity_in_usd = token_dex.liquidity_in_usd;
 
             // Step 6: Retrieve the percentage of tokens that are locked or burned.
-            println!("6. getting % liquidity burned or locked...");
+            println!("5. getting % liquidity burned or locked...");
             percentage_liquidity_locked_or_burned =
                 get_percentage_liquidity_locked_or_burned(&token, client).await?;
 
             // Step 7: Simulate a buy/sell to check token sellability.
-            println!("7. running buy / sell simulation with anvil...");
+            println!("6. running buy / sell simulation with anvil...");
             let token_status_from_simulated_buy_sell =
                 token.validate_with_simulated_buy_sell().await?;
 
@@ -136,7 +136,7 @@ pub async fn generate_token_checklist(
     }
 
     // Step 5: Check for online presence details of the token.
-    println!("5. getting online presence...");
+    println!("7. getting online presence...");
     let token_online_presense = match moralis::get_token_info(&token_address, &token.chain).await? {
         Some(online_presense) => online_presense,
         None => TokenWebData::default(),

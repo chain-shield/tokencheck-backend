@@ -2,7 +2,6 @@ use anyhow::Result;
 use chainshield_backend::abi::erc20::ERC20;
 use chainshield_backend::app_config::AI_MODEL;
 use chainshield_backend::data::chain_data::CHAIN_DATA;
-use chainshield_backend::data::dex::TokenDex;
 use chainshield_backend::data::token_data::ERC20Token;
 use chainshield_backend::dex::dex_data::find_top_dex_for_token;
 use chainshield_backend::token_check::token_checklist::generate_token_checklist;
@@ -66,7 +65,7 @@ async fn test_generate_checklist_mainnet() -> anyhow::Result<()> {
 
         println!("token score (rule based) => {:#?}", token_score);
 
-        let token_score_ai = get_token_score_with_ai(token_checklist, &AI_MODEL).await?;
+        let token_score_ai = get_token_score_with_ai(&token_checklist, &AI_MODEL).await?;
         println!("token score (ai) => {:#?}", token_score_ai);
     }
 

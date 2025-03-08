@@ -51,7 +51,7 @@ struct Variables {
     token_address: String,
 }
 
-pub async fn get_top_uniswap_v2_pool_by_token_and_chain(
+pub async fn get_top_uniswap_v2_pair_by_token_and_chain(
     token_address: Address,
     chain: &Chain,
 ) -> Result<Option<TokenDexData>> {
