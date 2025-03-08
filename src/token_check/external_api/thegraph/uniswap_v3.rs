@@ -90,11 +90,29 @@ struct Tick {
     _tick_idx: String,
 }
 
+/// Fetches Uniswap V3 liquidity positions for a specific pool.
+///
+/// This function queries TheGraph API to retrieve information about liquidity providers
+/// for a given Uniswap V3 pool. It returns a vector of `TokenHolders` containing the
+/// address of each liquidity provider and their liquidity amount.
+///
+/// # Arguments
+///
+/// * `pool_address` - The Ethereum address of the Uniswap V3 pool
+///
+/// # Returns
+///
+/// * `Result<Vec<TokenHolders>>` - A vector of token holders with their liquidity amounts
+///   or an error if the API request fails
 pub async fn fetch_uniswap_v3_positions(pool_address: Address) -> Result<Vec<TokenHolders>> {
-    // Prepare the where clause based on optional parameters
+    // Convert the pool address to a lowercase hex string without '0x' prefix
     let pool_id = address_to_string(pool_address);
+
+    // Create a filter to only get positions with positive liquidity in the specified pool
     let where_clause = format!("liquidity_gt: \"0\", pool: \"{}\"", pool_id);
+
     // Construct the GraphQL query for positions
+    // Limited to 1000 results, ordered by liquidity in descending order
     let query = format!(
         r#"{{
             positions(
@@ -137,18 +155,20 @@ pub async fn fetch_uniswap_v3_positions(pool_address: Address) -> Result<Vec<Tok
 
     // Create an HTTP client instance
     let client = Client::new();
+
     // Prepare the request body containing the GraphQL query
     let body = HashMap::from([("query", query)]);
 
-    // Retrieve the API key for TheGraph; propagates an error if it's missing.
+    // Retrieve the API key for TheGraph
     let thegraph_api_key = get_thegraph_api_key()?;
-    // Construct the full GraphQL URL including the API key and subgraph ID.
+
+    // Construct the full GraphQL URL including the API key and subgraph ID
     let graphql_url = format!(
         "{}/{}/subgraphs/id/{}",
         THEGRAPH_BASE_URL, thegraph_api_key, UNISWAP_V3_MAINNET_SUBGRAPH_ID
     );
 
-    // Send the POST request and ensure the HTTP status is 200 (OK).
+    // Send the POST request and handle HTTP errors
     let resp = client
         .post(graphql_url)
         .json(&body)
@@ -156,16 +176,16 @@ pub async fn fetch_uniswap_v3_positions(pool_address: Address) -> Result<Vec<Tok
         .await?
         .error_for_status()?;
 
-    // Deserialize the JSON response
+    // Deserialize the JSON response into our data structures
     let parsed: GraphQlResponse<PositionsData> = resp.json().await?;
 
-    // Process each position
+    // Process each position and convert to TokenHolders format
     let mut result_vec = Vec::<TokenHolders>::new();
     for position in parsed.data.positions {
-        // Convert the liquidity string to U256
+        // Convert the liquidity string to U256, skipping positions where conversion fails
         let liquidity = match U256::from_str(&position.liquidity) {
             Ok(val) => val,
-            Err(_) => continue, // Skip this position if parsing fails
+            Err(_) => continue,
         };
 
         // Add to the results vector

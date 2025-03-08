@@ -5,7 +5,7 @@ use super::token_liquidity_check::get_percentage_liquidity_locked_or_burned;
 use crate::app_config::AI_MODEL;
 use crate::data::token_data::ERC20Token;
 use crate::token_check::ai::ai_submission::check_code_with_ai;
-use crate::token_check::external_api::etherscan_api::{get_source_code, TokenWebData};
+use crate::token_check::external_api::etherscan_api::{TokenWebData, get_source_code};
 use crate::token_check::token_holder_check::TokenHolderCheck;
 use crate::utils::type_conversion::address_to_string;
 use ethers::providers::{Provider, Ws};
@@ -22,7 +22,7 @@ use std::sync::Arc;
 /// metrics, and token holder information to compute an overall legitimacy score.
 #[derive(Debug, Default, Clone)]
 pub struct TokenCheckList {
-    // token data including, name ,address, symbol, chain, pair/pool address etc
+    /// The token data including name, address, symbol, chain, pair/pool address etc.
     pub token: ERC20Token,
 
     // Fields derived from AI-based code analysis
@@ -42,7 +42,7 @@ pub struct TokenCheckList {
     pub percentage_of_tokens_locked_or_burned: f64,
     /// The percentage of liquidity tokens that are locked or burned.
     pub percentage_liquidity_locked_or_burned: Option<f64>,
-    /// The liquidity in wei for the token.
+    /// The liquidity in USD for the token.
     pub liquidity_in_usd: f64,
 
     // Fields derived from online presence checks
@@ -52,6 +52,7 @@ pub struct TokenCheckList {
     pub has_twitter_or_discord: bool,
 
     /// Represents whether the token is sellable based on simulation.
+    /// `Some(true)` if sellable, `Some(false)` if not sellable, `None` if buy simulation failed.
     pub is_token_sellable: Option<bool>,
 }
 
@@ -61,10 +62,10 @@ pub struct TokenCheckList {
 /// 1. Retrieves the token's source code.
 /// 2. Analyzes the source code using an AI model to determine if there is any potentially scammy behavior.
 /// 3. Obtains token holder details.
-/// 4. Retrieves liquidity information.
-/// 5. Checks the token's online presence (e.g., website, Twitter, Discord).
-/// 6. Gathers information on the percentage of liquidity locked or burned.
-/// 7. Runs a simulated buy/sell test using Anvil to verify token sellability.
+/// 4. Retrieves liquidity information (if token is on a DEX).
+/// 5. Checks the percentage of liquidity locked or burned (if token is on a DEX).
+/// 6. Simulates buy/sell transactions to verify token sellability (if token is on a DEX).
+/// 7. Checks the token's online presence (e.g., website, Twitter, Discord).
 ///
 /// # Arguments
 ///
@@ -93,7 +94,6 @@ pub async fn generate_token_checklist(
     println!("2. checking source code..");
     let token_code_check = check_code_with_ai(token_code, &AI_MODEL)
         .await?
-        // Replace unwrap() with proper error handling for missing AI response.
         .ok_or_else(|| anyhow::anyhow!("AI code check did not return a result"))?;
 
     // Step 3: Perform token holder check. If no check is available, default values are used.
@@ -103,25 +103,24 @@ pub async fn generate_token_checklist(
         None => TokenHolderCheck::default(),
     };
 
-    // default values if Token is NOT on a dex
+    // Default values if Token is NOT on a DEX
     let mut liquidity_in_usd = 0.0;
     let mut percentage_liquidity_locked_or_burned: Option<f64> = None;
     let mut is_token_sellable: Option<bool> = None;
 
-    // below only works if token is on a dex ,check that
+    // The following steps only execute if the token is on a DEX
     match token.clone().token_dex {
         Some(token_dex) => {
             // Step 4: Retrieve liquidity information.
             println!("4. getting liquidity...");
-            // TODO - setup so works with any dex
             liquidity_in_usd = token_dex.liquidity_in_usd;
 
-            // Step 6: Retrieve the percentage of tokens that are locked or burned.
+            // Step 5: Retrieve the percentage of liquidity that is locked or burned.
             println!("5. getting % liquidity burned or locked...");
             percentage_liquidity_locked_or_burned =
                 get_percentage_liquidity_locked_or_burned(&token, client).await?;
 
-            // Step 7: Simulate a buy/sell to check token sellability.
+            // Step 6: Simulate a buy/sell to check token sellability.
             println!("6. running buy / sell simulation with anvil...");
             let token_status_from_simulated_buy_sell =
                 token.validate_with_simulated_buy_sell().await?;
@@ -129,21 +128,23 @@ pub async fn generate_token_checklist(
             is_token_sellable = match token_status_from_simulated_buy_sell {
                 TokenStatus::CannotSell => Some(false),
                 TokenStatus::Legit => Some(true),
-                TokenStatus::CannotBuy => None,
+                TokenStatus::CannotBuy => None, // Cannot determine sellability if buying fails
             };
         }
-        None => {}
+        None => {
+            // No DEX information available for this token
+        }
     }
 
-    // Step 5: Check for online presence details of the token.
+    // Step 7: Check for online presence details of the token.
     println!("7. getting online presence...");
-    let token_online_presense = match moralis::get_token_info(&token_address, &token.chain).await? {
-        Some(online_presense) => online_presense,
+    let token_online_presence = match moralis::get_token_info(&token_address, &token.chain).await? {
+        Some(online_presence) => online_presence,
         None => TokenWebData::default(),
     };
 
     // Construct the final TokenCheckList with data from all the above validations.
-    let token_holder_check = TokenCheckList {
+    let token_checklist = TokenCheckList {
         token: token.clone(),
         possible_scam: token_code_check.possible_scam,
         reason_possible_scam: token_code_check.reason,
@@ -156,11 +157,11 @@ pub async fn generate_token_checklist(
             .percentage_tokens_burned_or_locked,
         percentage_liquidity_locked_or_burned,
         liquidity_in_usd,
-        has_website: !token_online_presense.website.is_empty(),
-        has_twitter_or_discord: !token_online_presense.twitter.is_empty()
-            || !token_online_presense.discord.is_empty(),
+        has_website: !token_online_presence.website.is_empty(),
+        has_twitter_or_discord: !token_online_presence.twitter.is_empty()
+            || !token_online_presence.discord.is_empty(),
         is_token_sellable,
     };
 
-    Ok(token_holder_check)
+    Ok(token_checklist)
 }

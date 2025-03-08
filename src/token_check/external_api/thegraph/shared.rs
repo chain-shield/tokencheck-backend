@@ -23,14 +23,35 @@ pub fn get_thegraph_api_key() -> anyhow::Result<String> {
     Ok(thegraph_key)
 }
 
+/// Fetches liquidity pool holders for a given token.
+///
+/// This function retrieves the holders of liquidity pool tokens based on the token's
+/// associated DEX (Decentralized Exchange). It supports Uniswap V2 and Uniswap V3.
+///
+/// # Arguments
+///
+/// * `token` - Reference to an ERC20Token containing DEX information
+///
+/// # Returns
+///
+/// * `anyhow::Result<Vec<TokenHolders>>` - A list of token holders or an error
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The token has no DEX information
+/// - The API request to fetch holders fails
+/// - There's an issue parsing the response
 pub async fn fetch_lp_holders(token: &ERC20Token) -> anyhow::Result<Vec<TokenHolders>> {
     let token_dex = token
         .clone()
         .token_dex
-        .expect("is_liquidity_locked: no token dex found");
+        .ok_or_else(|| anyhow::anyhow!("No token DEX information found"))?;
+
     match token_dex.dex {
         Dex::UniswapV2 => fetch_uniswap_v2_lp_holders(token_dex.pair_address).await,
         Dex::UniswapV3 => fetch_uniswap_v3_positions(token_dex.pair_address).await,
+        // Return empty vector for unsupported DEXes
         _ => Ok(Vec::<TokenHolders>::new()),
     }
 }
