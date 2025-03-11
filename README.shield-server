@@ -25,26 +25,6 @@ A simple RESTful API server built with Rust, Actix Web, and PostgreSQL.
 - [dotenvy](https://crates.io/crates/dotenvy) - Environment variable management
 
 
-
-
-
-## API Endpoints
-
-- `GET /` - Basic hello endpoint
-- `GET /item/{id}` - Get a specific item by ID
-- `POST /item` - Create a new item
-- `PUT /item/{id}` - Update an existing item
-- `DELETE /item/{id}` - Delete an item
-- `GET /report` - Get request logs with optional filters (method, status_code, path)
-
-## Project Structure
-
-- main.rs - Main application with routes and handlers
-- database.rs - Database connection handling
-- logger.rs - Logging middleware
-- models.rs - Data models
-
-
 ## Setup
 
 1. Clone the repository
