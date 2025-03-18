@@ -27,11 +27,6 @@ pub mod abi {
     pub mod uniswap_v3_router;
 }
 
-pub mod shield_server {
-    pub mod database;
-    pub mod db_logger;
-    pub mod db_models;
-}
 
 pub mod data {
     pub mod chain_data;

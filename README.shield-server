@@ -28,7 +28,7 @@ A simple RESTful API server built with Rust, Actix Web, and PostgreSQL.
 ## Setup
 
 1. Clone the repository
-2. Create a .env file with your PostgreSQL connection string:
+2. Create a .env file with your PostgreSQL connection string and other parameters, check config.rs for details:
    ```
    DATABASE_URL=postgres://username:password@localhost/database_name
    MAX_CONNECTIONS=10
@@ -37,6 +37,8 @@ A simple RESTful API server built with Rust, Actix Web, and PostgreSQL.
    WORKERS=4
    JWT_SECRET=your_very_secure_and_long_random_secret_key
    JWT_EXPIRATION_HOURS=24
+   ENABLE_CONSOLE_LOGGING=true
+   GITHUB authdata
    ```
 
 ## Running the Server

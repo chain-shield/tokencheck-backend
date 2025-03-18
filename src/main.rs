@@ -3,31 +3,53 @@
 //! that provides REST API endpoints for item management and request logging.
 
 // HTTP server modules
+mod config;
 mod middlewares;
 mod models;
+mod repo;
 mod routes;
 mod services;
+mod misc;
+mod dtos;
 
-use crate::middlewares::auth::{AuthMiddleware, JwtConfig};
+use crate::config::Config;
+use crate::middlewares::auth::AuthMiddleware;
 use crate::middlewares::logger;
 
 use actix_cors::Cors;
-use actix_web::{get, http::header, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{http::header, web, App, HttpServer};
 use sqlx::migrate::MigrateDatabase;
 use sqlx::PgPool;
-use std::env;
 use std::sync::Arc;
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 use chainshield_backend::{
     utils::logging::setup_logger,
 };
 use dotenv::dotenv;
 
-
-#[get("/")]
-async fn index() -> impl Responder {
-    HttpResponse::Ok().body("Hello!")
-}
+#[derive(OpenApi)]
+#[openapi(
+    paths(
+        routes::auth::register,
+        routes::auth::login,
+        routes::auth::auth_provider,
+        routes::auth::auth_provider_callback,
+        routes::user::me,
+        routes::log::report,
+        routes::sub::get_all_plans,
+        routes::sub::get_plan,
+        routes::sub::subscribe,
+        routes::sub::get_my_plan,
+    ),
+    info(
+        title = "Web Server API",
+        version = "1.0.0",
+        description = "API documentation for Web Server"
+    )
+)]
+struct ApiDoc;
 
 async fn setup_database(database_url: &str) -> Result<PgPool, Box<dyn std::error::Error>> {
     if !sqlx::Postgres::database_exists(database_url).await? {
@@ -40,43 +62,23 @@ async fn setup_database(database_url: &str) -> Result<PgPool, Box<dyn std::error
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-	// Load environment variables from .env file
     dotenv().ok();
     // Initialize the logger
     setup_logger().expect("Failed to initialize logger.");
+	// Load environment variables from .env file
+    let config = Arc::new(Config::from_env());
+    let config_clone = config.clone();
 
-    // Load data from .env
-    dotenvy::dotenv().ok();
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let ip: String = env::var("IP").expect("IP must be set");
-    let port: u16 = env::var("PORT")
-        .expect("PORT must be set")
-        .parse()
-        .expect("Failed to parse PORT as u16");
-    let num_workers: usize = env::var("WORKERS")
-        .expect("WORKERS must be set")
-        .parse()
-        .expect("Failed to parse WORKERS as usize");
+    env_logger::init();
 
-    // Get CORS allowed origins from environment or use default
-    let cors_origin =
-        env::var("CORS_ALLOWED_ORIGIN").unwrap_or_else(|_| "http://localhost:3000".to_string());
-
-    // Connect psql databse
-    let pool = setup_database(&database_url)
+    let pool = setup_database(&config.database_url)
         .await
         .expect("Failed to set up database");
     let pool = Arc::new(pool);
 
-    // Create JWT config
-    let jwt_config = JwtConfig::from_env();
-
-    let server = HttpServer::new(move || {
-        let auth_middleware = AuthMiddleware::new(jwt_config.clone());
-
-        // Configure CORS
+    HttpServer::new(move || {
         let cors = Cors::default()
-            .allowed_origin(&cors_origin)
+            .allowed_origin(&config_clone.cors_allowed_origin)
             .allowed_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS"])
             .allowed_headers(vec![
                 header::AUTHORIZATION,
@@ -87,40 +89,40 @@ async fn main() -> std::io::Result<()> {
             .max_age(3600);
 
         App::new()
-            .app_data(web::Data::new(pool.clone()))
-            .app_data(web::Data::new(jwt_config.clone()))
+            .wrap(logger::LoggerMiddleware::new(
+                config_clone.console_logging_enabled,
+            ))
             .wrap(cors)
-            .wrap(logger::LoggerMiddleware)
+            .app_data(web::Data::new(pool.clone()))
+            .app_data(web::Data::new(config_clone.clone()))
+            .service(
+                #[cfg(debug_assertions)]
+                SwaggerUi::new("/swagger-ui/{_:.*}")
+                    .url("/api-docs/openapi.json", ApiDoc::openapi()),
+            )
             .service(
                 web::scope("/api")
-                    .service(index)
                     .service(
                         web::scope("/auth")
                             .service(routes::auth::register)
-                            .service(routes::auth::login),
+                            .service(routes::auth::login)
+                            .service(routes::auth::auth_provider)
+                            .service(routes::auth::auth_provider_callback),
                     )
                     .service(
                         web::scope("/secured")
-                            .wrap(auth_middleware)
+                            .wrap(AuthMiddleware::new(config_clone.jwt_config.clone()))
                             .service(routes::user::me)
-                            .service(routes::item::get_all_items)
-                            .service(routes::item::create_item)
-                            .service(routes::item::get_item)
-                            .service(routes::item::update_item)
-                            .service(routes::item::delete_item)
-                            .service(routes::report::report)
-                            .service(routes::subs::get_all_plans)
-                            .service(routes::subs::get_plan)
-                            .service(routes::subs::subscribe)
-                            .service(routes::subs::get_current_subscription),
+                            .service(routes::log::report)
+                            .service(routes::sub::get_all_plans)
+                            .service(routes::sub::get_plan)
+                            .service(routes::sub::subscribe)
+                            .service(routes::sub::get_my_plan),
                     ),
             )
     })
-    .bind((ip.as_str(), port))?
-    .workers(num_workers)
-    .run();
-
-    println!("Server running at http://{}:{}", ip, port);
-
-    server.await
+    .bind((config.server_host.as_str(), config.server_port))?
+    .workers(config.num_workers)
+    .run()
+    .await
 }
