@@ -2,27 +2,27 @@ use actix_web::body::{self, BoxBody, MessageBody};
 use actix_web::dev::Payload;
 use actix_web::web::{self, Bytes};
 use actix_web::{
-    dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
     Error,
+    dev::{Service, ServiceRequest, ServiceResponse, Transform, forward_ready},
 };
 use actix_web::{HttpMessage, HttpResponse, ResponseError};
 use chrono::Utc;
 use colored::Colorize;
-use futures::future::{ready, LocalBoxFuture, Ready};
 use futures::StreamExt;
-use serde_json::{json, Value};
-use sqlx::types::ipnetwork::IpNetwork;
+use futures::future::{LocalBoxFuture, Ready, ready};
+use serde_json::{Value, json};
 use sqlx::PgPool;
-use uuid::Uuid;
+use sqlx::types::ipnetwork::IpNetwork;
 use std::collections::HashMap;
 use std::env;
 use std::pin::Pin;
 use std::str::FromStr;
 use std::sync::Arc;
+use uuid::Uuid;
 
-use crate::models::auth::Claims;
-use crate::models::log::Log;
-use crate::services;
+use crate::server::models::auth::Claims;
+use crate::server::models::log::Log;
+use crate::server::services;
 
 pub struct LoggerMiddleware {
     console_logging_enabled: bool,

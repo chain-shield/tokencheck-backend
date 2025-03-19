@@ -1,9 +1,9 @@
-use actix_web::{get, post, web, HttpResponse, Responder};
+use actix_web::{HttpResponse, Responder, get, post, web};
 use oauth2::{AuthorizationCode, CsrfToken, Scope, TokenResponse};
 use sqlx::PgPool;
 use std::sync::Arc;
 
-use crate::{
+use crate::server::{
     config::Config,
     dtos::{
         auth::{AuthResponse, LoginRequest, RegisterRequest},
@@ -63,7 +63,7 @@ pub async fn login(
     login_data: web::Json<LoginRequest>,
     config: web::Data<Arc<Config>>,
     pool: web::Data<Arc<PgPool>>,
-) -> Result<impl Responder, crate::misc::error::AppError> {
+) -> Result<impl Responder, crate::server::misc::error::AppError> {
     let pg_pool: &PgPool = &**pool;
     let user = services::auth::authenticate_user(pg_pool, &login_data.into_inner()).await?;
     let token = services::auth::generate_jwt(&user.id.to_string(), &config.jwt_config)?;

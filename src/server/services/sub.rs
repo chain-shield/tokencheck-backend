@@ -1,7 +1,7 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::{
+use crate::server::{
     misc::error::{AppError, Res},
     models::sub::{SubscriptionPlan, UserSubscription},
     repo,

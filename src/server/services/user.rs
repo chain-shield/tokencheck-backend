@@ -1,14 +1,14 @@
-use crate::dtos::auth::RegisterRequest;
-use crate::dtos::oauth::OAuthUserData;
-use crate::dtos::user::{AuthProviderCreateRequest, UserCreateRequest};
-use crate::misc::error::Res;
-use crate::misc::oauth::OAuthProvider;
-use crate::misc::user::UserVerificationOrigin;
-use crate::models::user::AuthCredentials;
-use crate::{models::user::User, repo};
-use argon2::password_hash::rand_core::OsRng;
+use crate::server::dtos::auth::RegisterRequest;
+use crate::server::dtos::oauth::OAuthUserData;
+use crate::server::dtos::user::{AuthProviderCreateRequest, UserCreateRequest};
+use crate::server::misc::error::Res;
+use crate::server::misc::oauth::OAuthProvider;
+use crate::server::misc::user::UserVerificationOrigin;
+use crate::server::models::user::AuthCredentials;
+use crate::server::{models::user::User, repo};
 use argon2::password_hash::SaltString;
-use argon2::{password_hash::PasswordHasher, Argon2};
+use argon2::password_hash::rand_core::OsRng;
+use argon2::{Argon2, password_hash::PasswordHasher};
 
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -56,10 +56,7 @@ pub async fn create_user_with_oauth(
     Ok(user)
 }
 
-pub async fn create_user_with_credentials(
-    pool: &PgPool,
-    req: &RegisterRequest,
-) -> Res<User> {
+pub async fn create_user_with_credentials(pool: &PgPool, req: &RegisterRequest) -> Res<User> {
     let mut tx = pool.begin().await?;
 
     let user = repo::user::insert_user(

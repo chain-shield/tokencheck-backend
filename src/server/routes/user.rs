@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use actix_web::{get, web, Responder};
+use actix_web::{Responder, get, web};
 use sqlx::PgPool;
 
-use crate::{
+use crate::server::{
     misc::response::Success,
     models::{auth::Claims, user::User},
     services,

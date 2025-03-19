@@ -1,4 +1,4 @@
-use crate::{
+use crate::server::{
     misc::error::{AppError, Res},
     models::sub::{SubscriptionPlan, UserSubscription},
 };
@@ -79,7 +79,10 @@ pub async fn get_user_sub<'e, E: Executor<'e, Database = Postgres>>(
     .ok_or(AppError::NotFound("User subscription not found".into()))
 }
 
-pub async fn update_user_sub_to_status_cancel<'e, E: Executor<'e, Database = Postgres>>(executor: E, user_id: &Uuid) -> Res<()> {
+pub async fn update_user_sub_to_status_cancel<'e, E: Executor<'e, Database = Postgres>>(
+    executor: E,
+    user_id: &Uuid,
+) -> Res<()> {
     sqlx::query!(
         "UPDATE user_subscriptions 
          SET status = 'canceled', end_date = CURRENT_TIMESTAMP
@@ -91,7 +94,8 @@ pub async fn update_user_sub_to_status_cancel<'e, E: Executor<'e, Database = Pos
     Ok(())
 }
 
-pub async fn insert_user_subscription<'e, E: Executor<'e, Database = Postgres>>(executor: E,
+pub async fn insert_user_subscription<'e, E: Executor<'e, Database = Postgres>>(
+    executor: E,
     user_id: &Uuid,
     plan_id: &Uuid,
 ) -> Res<UserSubscription> {

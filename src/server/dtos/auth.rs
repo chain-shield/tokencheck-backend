@@ -1,4 +1,4 @@
-use crate::models::user::User;
+use crate::server::models::user::User;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 

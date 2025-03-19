@@ -1,6 +1,6 @@
 use chrono::NaiveDateTime;
 use serde::Serialize;
-use sqlx::types::{ipnetwork::IpNetwork, JsonValue};
+use sqlx::types::{JsonValue, ipnetwork::IpNetwork};
 use utoipa::ToSchema;
 use uuid::Uuid;
 

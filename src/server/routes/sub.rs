@@ -1,9 +1,9 @@
-use actix_web::{get, post, web, Responder};
+use actix_web::{Responder, get, post, web};
 use sqlx::PgPool;
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::{
+use crate::server::{
     config::Config,
     dtos::sub::{SubscriptionCreateRequest, SubscriptionResponse},
     misc::response::Success,

@@ -1,4 +1,4 @@
-use crate::{
+use crate::server::{
     config::Config,
     dtos::{auth::LoginRequest, oauth::OAuthUserData},
     misc::{
@@ -9,18 +9,18 @@ use crate::{
     repo,
 };
 use argon2::{
-    password_hash::{PasswordHash, PasswordVerifier},
     Argon2,
+    password_hash::{PasswordHash, PasswordVerifier},
 };
 use chrono::{Duration, Utc};
-use jsonwebtoken::{decode, DecodingKey, Validation};
-use jsonwebtoken::{encode, EncodingKey, Header};
+use jsonwebtoken::{DecodingKey, Validation, decode};
+use jsonwebtoken::{EncodingKey, Header, encode};
 use oauth2::basic::*;
 use oauth2::*;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::{config::JwtConfig, models::auth::Claims, services};
+use crate::server::{config::JwtConfig, models::auth::Claims, services};
 
 pub fn generate_jwt(user_id: &str, config: &JwtConfig) -> Res<String> {
     let expiration = Utc::now()
@@ -142,7 +142,10 @@ pub async fn fetch_provider_user_data(
 ) -> Res<OAuthUserData> {
     match provider {
         OAuthProvider::GitHub => fetch_github_user_data(access_token).await,
-        prov => Err(AppError::Internal(format!("Unsupported OAuth provider: {:?}", prov))),
+        prov => Err(AppError::Internal(format!(
+            "Unsupported OAuth provider: {:?}",
+            prov
+        ))),
     }
 }
 

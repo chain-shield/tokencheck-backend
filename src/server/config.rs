@@ -21,6 +21,12 @@ pub struct ProviderClient {
     pub redirect_uri: String,
 }
 
+impl ProviderClient {
+    pub fn is_configured(&self) -> bool {
+        !self.client_id.is_empty() && !self.client_secret.is_empty()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct JwtConfig {
     pub secret: String,
@@ -64,12 +70,16 @@ impl Config {
                 .to_lowercase()
                 == "true",
             github_client: ProviderClient {
-                client_id: env::var("GITHUB_CLIENT_ID").expect("GITHUB_CLIENT_ID must be set"),
-                client_secret: env::var("GITHUB_CLIENT_SECRET").expect("GITHUB_CLIENT_SECRET must be set"),
-                auth_url: env::var("GITHUB_AUTH_URL").expect("GITHUB_AUTH_URL must be set"),
-                token_url: env::var("GITHUB_TOKEN_URL").expect("GITHUB_TOKEN_URL must be set"),
-                redirect_uri: env::var("GITHUB_REDIRECT_URI").expect("GITHUB_REDIRECT_URI must be set"),
-            }
+                client_id: env::var("GITHUB_CLIENT_ID").unwrap_or_default(),
+                client_secret: env::var("GITHUB_CLIENT_SECRET").unwrap_or_default(),
+                auth_url: env::var("GITHUB_AUTH_URL")
+                    .unwrap_or_else(|_| "https://github.com/login/oauth/authorize".to_string()),
+                token_url: env::var("GITHUB_TOKEN_URL")
+                    .unwrap_or_else(|_| "https://github.com/login/oauth/access_token".to_string()),
+                redirect_uri: env::var("GITHUB_REDIRECT_URI").unwrap_or_else(|_| {
+                    "http://localhost:8080/api/auth/oauth/github/callback".to_string()
+                }),
+            },
         }
     }
 }

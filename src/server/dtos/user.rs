@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use crate::misc::user::UserVerificationOrigin;
+use crate::server::misc::user::UserVerificationOrigin;
 
 pub struct UserCreateRequest {
     pub email: String,

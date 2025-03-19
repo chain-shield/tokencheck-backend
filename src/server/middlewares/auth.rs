@@ -1,12 +1,12 @@
 use std::{future::Future, pin::Pin, rc::Rc, sync::Arc};
 
 use actix_web::{
-    dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
     Error, HttpMessage, HttpResponse,
+    dev::{Service, ServiceRequest, ServiceResponse, Transform, forward_ready},
 };
-use futures::future::{ok, Ready};
+use futures::future::{Ready, ok};
 
-use crate::{config::JwtConfig, services::auth::validate_jwt};
+use crate::server::{config::JwtConfig, services::auth::validate_jwt};
 
 pub struct AuthMiddleware {
     jwt_config: Rc<JwtConfig>,

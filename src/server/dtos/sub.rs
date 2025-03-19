@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::models::sub::UserSubscription;
+use crate::server::models::sub::UserSubscription;
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct SubscriptionCreateRequest {

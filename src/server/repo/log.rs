@@ -1,4 +1,4 @@
-use crate::{
+use crate::server::{
     misc::error::{AppError, Res},
     models::log::Log,
 };

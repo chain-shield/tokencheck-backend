@@ -1,6 +1,6 @@
 use sqlx::PgPool;
 
-use crate::{misc::error::Res, models::log::Log, repo};
+use crate::server::{misc::error::Res, models::log::Log, repo};
 
 pub async fn get_report(
     pool: &PgPool,
