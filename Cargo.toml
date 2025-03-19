@@ -27,16 +27,16 @@ dotenvy = "0.15.7"
 futures = "0.3.31"
 jsonwebtoken = "9.3.1"
 sqlx = { version = "0.8.3", features = [
-	"runtime-tokio-rustls",
-    "runtime-tokio",
-    "tls-rustls",
-    "postgres",
-    "uuid",
-    "chrono",
-    "migrate",
-    "bigdecimal",
-    "ipnetwork",
-	"json"
+  "runtime-tokio-rustls",
+  "runtime-tokio",
+  "tls-rustls",
+  "postgres",
+  "uuid",
+  "chrono",
+  "migrate",
+  "bigdecimal",
+  "ipnetwork",
+  "json",
 ] }
 argon2 = "0.5.3"
 uuid = { version = "1.16.0", features = ["v4", "serde"] }
@@ -45,5 +45,5 @@ utoipa-swagger-ui = { version = "9", features = ["actix-web"] }
 utoipa = { version = "5.3.1", features = ["actix_extras", "chrono", "uuid"] }
 utoipa-actix-web = "0.1.2"
 oauth2 = "5.0.0"
-env_logger = "0.11.7"
 thiserror = "2.0.12"
+

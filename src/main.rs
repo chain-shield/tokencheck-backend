@@ -10,9 +10,9 @@ use crate::server::middlewares::auth::AuthMiddleware;
 use crate::server::middlewares::logger;
 
 use actix_cors::Cors;
-use actix_web::{App, HttpServer, http::header, web};
-use sqlx::PgPool;
+use actix_web::{http::header, web, App, HttpServer};
 use sqlx::migrate::MigrateDatabase;
+use sqlx::PgPool;
 use std::sync::Arc;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
@@ -39,11 +39,8 @@ use utoipa_swagger_ui::SwaggerUi;
 )]
 struct ApiDoc;
 
-use chainshield_backend::{
-    utils::logging::setup_logger,
-};
+use chainshield_backend::utils::logging::setup_logger;
 use dotenv::dotenv;
-
 
 async fn setup_database(database_url: &str) -> Result<PgPool, Box<dyn std::error::Error>> {
     if !sqlx::Postgres::database_exists(database_url).await? {
@@ -56,17 +53,13 @@ async fn setup_database(database_url: &str) -> Result<PgPool, Box<dyn std::error
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-	dotenv().ok();
+    dotenv().ok();
     // Initialize the logger
     setup_logger().expect("Failed to initialize logger.");
 
-	// Load environment variables from .env file
+    // Load environment variables from .env file
     let config = Arc::new(Config::from_env());
     let config_clone = config.clone();
-
-    if config_clone.console_logging_enabled {
-        env_logger::init();
-    }
 
     let pool = setup_database(&config.database_url)
         .await
@@ -133,6 +126,3 @@ async fn main() -> std::io::Result<()> {
     .run()
     .await
 }
-
-
-
