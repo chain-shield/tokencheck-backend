@@ -1,4 +1,3 @@
-use ethers::types::Address;
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -17,7 +16,7 @@ pub static TOKEN_CHECKLIST_HASH: Lazy<Arc<Mutex<HashMap<String, TokenCheckList>>
 /// Retrieves all token checklists from the cache.
 ///
 /// Returns a copy of the entire token checklist cache as a HashMap.
-pub async fn get_token_checklists() -> HashMap<String, TokenCheckList> {
+pub async fn get_token_checklists_from_cache() -> HashMap<String, TokenCheckList> {
     let token_checklist_hash = Arc::clone(&TOKEN_CHECKLIST_HASH);
     let tokens = token_checklist_hash.lock().await;
 
@@ -32,7 +31,7 @@ pub async fn get_token_checklists() -> HashMap<String, TokenCheckList> {
 /// # Returns
 /// * `Some(TokenCheckList)` if the token is found in the cache
 /// * `None` if the token is not found
-pub async fn get_token_checklist(token_address: &str) -> Option<TokenCheckList> {
+pub async fn get_token_checklist_from_cache(token_address: &str) -> Option<TokenCheckList> {
     let token_checklist_hash = Arc::clone(&TOKEN_CHECKLIST_HASH);
     let token_checklists = token_checklist_hash.lock().await;
 
@@ -44,7 +43,7 @@ impl TokenCheckList {
     ///
     /// This method inserts or updates the current TokenCheckList instance
     /// in the global cache, using the lowercase token address as the key.
-    pub async fn update_state(&self) {
+    pub async fn save_to_cache(&self) {
         let token_checklist_hash = Arc::clone(&TOKEN_CHECKLIST_HASH);
         let mut tokens = token_checklist_hash.lock().await;
         let token_address = address_to_string(self.token.address).to_lowercase();

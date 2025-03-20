@@ -43,8 +43,6 @@ impl AnvilTestSimulator {
                 if let Some(revert_call) = find_revert(call_frame) {
                     debug!("Revert: {:?}", revert_call);
                     println!("Revert occurred in call to: {:?}", revert_call.to);
-
-                    // TODO: Proceed to decode the function (if needed)
                 } else {
                     println!("No revert found in the trace");
                 }
