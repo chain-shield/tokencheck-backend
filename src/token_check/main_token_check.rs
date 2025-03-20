@@ -4,7 +4,8 @@ use log::info;
 use crate::{
     app_config::AI_MODEL,
     data::{
-        provider_manager::get_chain_provider, token_checklist_cache::get_token_checklist,
+        provider_manager::get_chain_provider,
+        token_checklist_cache::{get_token_checklist_from_cache, get_token_checklists_from_cache},
         token_data::get_core_token_data_by_address,
     },
     token_check::{
@@ -31,7 +32,7 @@ pub async fn get_token_audit_and_reputation_score(
     token_address: &str,
 ) -> anyhow::Result<(TokenCheckList, Option<TokenScoreAssessment>)> {
     // First try to get checklist from cache
-    let token_checklist = match get_token_checklist(token_address).await {
+    let token_checklist = match get_token_checklist_from_cache(token_address).await {
         Some(checklist) => checklist,
         None => {
             // If not in cache, fetch token data and generate a new checklist
@@ -49,12 +50,17 @@ pub async fn get_token_audit_and_reputation_score(
 
     info!("token checklist => {:#?}", token_checklist);
 
-    // TODO - SAVE TOKEN CHECKLIST TO CACHE
     // Note: The checklist should be saved to cache here to avoid regenerating it in future requests
+    token_checklist.save_to_cache().await;
 
     // Calculate token score using AI model
     let token_score_ai = get_token_score_with_ai(&token_checklist, &AI_MODEL).await?;
     info!("token score (ai) => {:#?}", token_score_ai);
+
+    //save token score to cache, if avaliable
+    if let Some(token_score) = token_score_ai.clone() {
+        token_score.save_to_cache(token_address).await;
+    }
 
     Ok((token_checklist, token_score_ai))
 }

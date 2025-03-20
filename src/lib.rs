@@ -27,13 +27,13 @@ pub mod abi {
     pub mod uniswap_v3_router;
 }
 
-
 pub mod data {
     pub mod chain_data;
     pub mod dex;
     pub mod provider_manager;
     pub mod token_checklist_cache;
     pub mod token_data;
+    pub mod token_score_cache;
 }
 
 pub mod token_check {

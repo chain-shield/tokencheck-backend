@@ -1,13 +1,13 @@
 use anyhow::anyhow;
 use chainshield_backend::app_config::AI_MODEL;
 use chainshield_backend::data::provider_manager::get_chain_provider;
-use chainshield_backend::data::token_checklist_cache::get_token_checklist;
+use chainshield_backend::data::token_checklist_cache::get_token_checklist_from_cache;
 use chainshield_backend::data::token_data::get_core_token_data_by_address;
+use chainshield_backend::data::token_score_cache::get_token_token_score_from_cache;
 use chainshield_backend::token_check::token_checklist::generate_token_checklist;
 use chainshield_backend::token_check::token_score::get_token_score_with_ai;
 use chainshield_backend::utils::logging::setup_logger;
 use dotenv::dotenv;
-use ethers::types::Address;
 use log::info;
 
 /// Whitelist tokens for mainnet testing.
@@ -26,7 +26,7 @@ async fn test_checklist_is_generated_with_link() -> anyhow::Result<()> {
 
     let link = "0x514910771af9ca656af840dff83e8264ecf986ca";
 
-    let token_checklist = match get_token_checklist(link).await {
+    let token_checklist = match get_token_checklist_from_cache(link).await {
         Some(checklist) => checklist,
         None => {
             if let Some(token_data) = get_core_token_data_by_address(link).await? {
@@ -47,14 +47,13 @@ async fn test_checklist_is_generated_with_link() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-#[ignore]
 async fn test_checklist_and_token_score_generation_with_link() -> anyhow::Result<()> {
     dotenv().ok();
     setup_logger().expect("Failed to initialize logger.");
 
     let link = "0x514910771af9ca656af840dff83e8264ecf986ca";
 
-    let token_checklist = match get_token_checklist(link).await {
+    let token_checklist = match get_token_checklist_from_cache(link).await {
         Some(checklist) => checklist,
         None => {
             if let Some(token_data) = get_core_token_data_by_address(&link).await? {
@@ -71,25 +70,42 @@ async fn test_checklist_and_token_score_generation_with_link() -> anyhow::Result
 
     info!("token checklist => {:#?}", token_checklist);
 
-    // TODO - SAVE TOKEN CHECKLIST TO CACHE
+    // save to cache
+    token_checklist.save_to_cache().await;
 
     // Calculate token score using AI model
     let token_score_ai = get_token_score_with_ai(&token_checklist, &AI_MODEL).await?;
     info!("token score (ai) => {:#?}", token_score_ai);
 
-    // TODO - Create Cache for token score
-    //
+    let mut token_score_str = String::new();
+    if let Some(token_score) = token_score_ai.clone() {
+        token_score.save_to_cache(link).await;
+        token_score_str = format!("{:?}", token_score);
+    }
+
+    // get save token scores
+    let saved_token_checklist = get_token_checklist_from_cache(link).await.unwrap();
+    let saved_token_score = get_token_token_score_from_cache(link).await.unwrap();
+
+    let saved_token_checklist_str = format!("{:?}", saved_token_checklist);
+    let saved_token_score_str = format!("{:?}", saved_token_score);
+    let token_checklist_str = format!("{:?}", token_checklist);
+
+    assert_eq!(saved_token_score_str, token_score_str);
+    assert_eq!(saved_token_checklist_str, token_checklist_str);
+
     Ok(())
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_checklist_and_token_score_generation() -> anyhow::Result<()> {
     dotenv().ok();
     setup_logger().expect("Failed to initialize logger.");
 
     // THIS IS FOR TESTING PURPOSES - WILL BE REPLACED BY SERVER CODE
     for token in WHITELIST_TOKENS_MAINNET {
-        let token_checklist = match get_token_checklist(token).await {
+        let token_checklist = match get_token_checklist_from_cache(token).await {
             Some(checklist) => checklist,
             None => {
                 if let Some(token_data) = get_core_token_data_by_address(&token).await? {
