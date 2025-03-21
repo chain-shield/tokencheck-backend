@@ -10,15 +10,15 @@ use crate::server::middlewares::auth::AuthMiddleware;
 use crate::server::middlewares::logger;
 
 use actix_cors::Cors;
-use actix_session::SessionMiddleware;
 use actix_session::config::PersistentSession;
 use actix_session::storage::CookieSessionStore;
+use actix_session::SessionMiddleware;
 use actix_web::cookie::time::Duration;
 use actix_web::cookie::{Key, SameSite};
-use actix_web::{App, HttpServer, http::header, web};
+use actix_web::{http::header, web, App, HttpServer};
 use colored::Colorize;
-use sqlx::PgPool;
 use sqlx::migrate::MigrateDatabase;
+use sqlx::PgPool;
 use std::fs::File;
 use std::sync::Arc;
 use utoipa::OpenApi;
@@ -26,7 +26,6 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use chainshield_backend::utils::logging::setup_logger;
 use dotenv::dotenv;
-
 
 #[derive(OpenApi)]
 #[openapi(
@@ -65,8 +64,8 @@ async fn main() -> std::io::Result<()> {
     let config = Arc::new(Config::from_env());
     let config_clone = config.clone();
 
-	dotenv().ok();
-    
+    dotenv().ok();
+
     if config_clone.console_logging_enabled {
         setup_logger().expect("Failed to set up logger");
     }
