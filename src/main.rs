@@ -10,12 +10,23 @@ use crate::server::middlewares::auth::AuthMiddleware;
 use crate::server::middlewares::logger;
 
 use actix_cors::Cors;
-use actix_web::{http::header, web, App, HttpServer};
-use sqlx::migrate::MigrateDatabase;
+use actix_session::SessionMiddleware;
+use actix_session::config::PersistentSession;
+use actix_session::storage::CookieSessionStore;
+use actix_web::cookie::time::Duration;
+use actix_web::cookie::{Key, SameSite};
+use actix_web::{App, HttpServer, http::header, web};
+use colored::Colorize;
 use sqlx::PgPool;
+use sqlx::migrate::MigrateDatabase;
+use std::fs::File;
 use std::sync::Arc;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
+
+use chainshield_backend::utils::logging::setup_logger;
+use dotenv::dotenv;
+
 
 #[derive(OpenApi)]
 #[openapi(
@@ -30,6 +41,7 @@ use utoipa_swagger_ui::SwaggerUi;
         server::routes::sub::get_plan,
         server::routes::sub::subscribe,
         server::routes::sub::get_my_plan,
+        server::routes::session::get_session
     ),
     info(
         title = "Web Server API",
@@ -38,9 +50,6 @@ use utoipa_swagger_ui::SwaggerUi;
     )
 )]
 struct ApiDoc;
-
-use chainshield_backend::utils::logging::setup_logger;
-use dotenv::dotenv;
 
 async fn setup_database(database_url: &str) -> Result<PgPool, Box<dyn std::error::Error>> {
     if !sqlx::Postgres::database_exists(database_url).await? {
@@ -53,13 +62,14 @@ async fn setup_database(database_url: &str) -> Result<PgPool, Box<dyn std::error
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    dotenv().ok();
-    // Initialize the logger
-    setup_logger().expect("Failed to initialize logger.");
-
-    // Load environment variables from .env file
     let config = Arc::new(Config::from_env());
     let config_clone = config.clone();
+
+	dotenv().ok();
+    
+    if config_clone.console_logging_enabled {
+        setup_logger().expect("Failed to set up logger");
+    }
 
     let pool = setup_database(&config.database_url)
         .await
@@ -67,6 +77,7 @@ async fn main() -> std::io::Result<()> {
     let pool = Arc::new(pool);
 
     HttpServer::new(move || {
+        let secret_key = Key::generate();
         let cors = Cors::default()
             .allowed_origin(&config_clone.cors_allowed_origin)
             .allowed_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS"])
@@ -78,11 +89,22 @@ async fn main() -> std::io::Result<()> {
             .supports_credentials()
             .max_age(3600);
 
-        let mut app = App::new()
+        let app = App::new()
             .wrap(logger::LoggerMiddleware::new(
                 config_clone.console_logging_enabled,
             ))
             .wrap(cors)
+            .wrap(
+                SessionMiddleware::builder(CookieSessionStore::default(), secret_key)
+                    .cookie_name("auth_session".to_string())
+                    .cookie_secure(false) // change to true in production when HTTPS is enabled
+                    .cookie_same_site(SameSite::Lax) // Use Lax for better browser compatibility
+                    .cookie_domain(None) // Let browser determine domain
+                    .session_lifecycle(
+                        PersistentSession::default().session_ttl(Duration::hours(24)),
+                    )
+                    .build(),
+            )
             .app_data(web::Data::new(pool.clone()))
             .app_data(web::Data::new(config_clone.clone()))
             .service(
@@ -92,10 +114,13 @@ async fn main() -> std::io::Result<()> {
             )
             .service(
                 web::scope("/api")
+                    .service(server::routes::session::get_session)
                     .service(
                         web::scope("/auth")
                             .service(server::routes::auth::register)
                             .service(server::routes::auth::login)
+                            .service(server::routes::auth::auth_provider)
+                            .service(server::routes::auth::auth_provider_callback),
                     )
                     .service(
                         web::scope("/secured")
@@ -108,16 +133,6 @@ async fn main() -> std::io::Result<()> {
                             .service(server::routes::sub::get_my_plan),
                     ),
             );
-
-        if config_clone.github_client.is_configured() {
-            app = app.service(
-                web::scope("/api/auth")
-                    .service(server::routes::auth::auth_provider)
-                    .service(server::routes::auth::auth_provider_callback),
-            );
-        } else {
-            log::warn!("GitHub OAuth is not configured. GitHub authentication routes will not be available.");
-        }
 
         app
     })

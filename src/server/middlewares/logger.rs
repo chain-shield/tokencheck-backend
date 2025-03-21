@@ -10,6 +10,7 @@ use chrono::Utc;
 use colored::Colorize;
 use futures::StreamExt;
 use futures::future::{LocalBoxFuture, Ready, ready};
+use log::{debug, info};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use sqlx::types::ipnetwork::IpNetwork;
@@ -169,12 +170,8 @@ where
                     _ => method.normal(),
                 };
 
-                println!(
-                    "{} [{}] {} {} {} user_id={} params={}",
-                    timestamp
-                        .format("%Y-%m-%d %H:%M:%S")
-                        .to_string()
-                        .bright_black(),
+                info!(
+                    "[{}] {} {} {} user_id={} params={}",
                     colored_status,
                     colored_method,
                     path.bright_white(),
@@ -187,7 +184,7 @@ where
 
                 if let Some(ref body) = request_body.as_object() {
                     if !body.is_empty() {
-                        println!(
+                        debug!(
                             "  Request: {}",
                             serde_json::to_string(&request_body)
                                 .unwrap_or_default()
@@ -199,7 +196,7 @@ where
                 if status_code >= 400
                     || (response_body.is_object() && !response_body.as_object().unwrap().is_empty())
                 {
-                    println!(
+                    debug!(
                         "  Response: {}",
                         serde_json::to_string(&response_body)
                             .unwrap_or_default()

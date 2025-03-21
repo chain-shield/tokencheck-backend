@@ -65,7 +65,7 @@ pub async fn create_user_with_credentials(pool: &PgPool, req: &RegisterRequest) 
             email: req.email.clone(),
             first_name: req.first_name.clone(),
             last_name: req.last_name.clone(),
-            company_name: None,
+            company_name: req.company_name.clone(),
             verification_origin: UserVerificationOrigin::Email,
         },
     )

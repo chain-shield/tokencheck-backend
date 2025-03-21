@@ -1,30 +1,59 @@
 use std::env;
 
 #[derive(Clone, Debug)]
+/// Configuration struct for the server.
+///
+/// This struct holds all the necessary configuration parameters
+/// required to initialize and run the server.
+/// It includes database connection details, JWT configuration,
+/// server host and port, number of worker threads, CORS settings,
+/// logging preferences, web application authentication callback URL,
+/// and GitHub client configuration.
 pub struct Config {
+    /// The URL of the database to connect to.
     pub database_url: String,
+    /// Configuration for JWT (JSON Web Token) authentication.
     pub jwt_config: JwtConfig,
+    /// The hostname or IP address the server will bind to.
     pub server_host: String,
+    /// The port number the server will listen on.
     pub server_port: u16,
+    /// The number of worker threads to spawn for handling requests.
     pub num_workers: usize,
+    /// The allowed origin for CORS (Cross-Origin Resource Sharing).
     pub cors_allowed_origin: String,
+    /// A boolean indicating whether console logging is enabled.
     pub console_logging_enabled: bool,
+    /// The URL that the web application will redirect to after authentication.
+    pub web_app_auth_callback_url: String,
+    /// Configuration for the GitHub OAuth2 client.
     pub github_client: ProviderClient,
+    /// Configuration for the Google OAuth2 client.
+    pub google_client: ProviderClient,
+    /// Configuration for the Facebook OAuth2 client.
+    pub facebook_client: ProviderClient,
+    /// Configuration for the Apple OAuth2 client.
+    pub apple_client: ProviderClient,
+    /// Configuration for the Twitter OAuth2 client.
+    pub twitter_client: ProviderClient,
 }
 
 #[derive(Clone, Debug)]
+/// `ProviderClient` holds the configuration necessary for interacting with an OAuth 2.0 provider.
+///
+/// It contains the client ID and secret, as well as the authentication and token URLs required
+/// for the OAuth 2.0 flow. The redirect URI is also stored for use after successful authentication.
 pub struct ProviderClient {
+    /// The client ID for the OAuth 2.0 provider.
     pub client_id: String,
+    /// The client secret for the OAuth 2.0 provider.
     pub client_secret: String,
+    /// The authentication URL for the OAuth 2.0 provider.
     pub auth_url: String,
+    /// The token URL for the OAuth 2.0 provider.
     pub token_url: String,
+    /// The redirect URI for the OAuth 2.0 provider.
     pub redirect_uri: String,
-}
-
-impl ProviderClient {
-    pub fn is_configured(&self) -> bool {
-        !self.client_id.is_empty() && !self.client_secret.is_empty()
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -54,21 +83,23 @@ impl Config {
         Config {
             database_url: env::var("DATABASE_URL").expect("DATABASE_URL must be set"),
             jwt_config: JwtConfig::from_env(),
-            server_host: env::var("IP").expect("IP must be set"),
+            server_host: env::var("IP").unwrap_or_else(|_| "127.0.0.1".to_string()),
             server_port: env::var("PORT")
-                .expect("PORT must be set")
+                .unwrap_or_else(|_| "8080".to_string())
                 .parse()
-                .expect("Failed to parse PORT as u16"),
+                .unwrap_or(8080),
             num_workers: env::var("WORKERS")
-                .expect("WORKERS must be set")
+                .unwrap_or_else(|_| "4".to_string())
                 .parse()
-                .expect("Failed to parse WORKERS as usize"),
+                .unwrap_or(4),
             cors_allowed_origin: env::var("CORS_ALLOWED_ORIGIN")
                 .unwrap_or_else(|_| "http://localhost:3000".to_string()),
             console_logging_enabled: env::var("ENABLE_CONSOLE_LOGGING")
                 .unwrap_or_else(|_| "true".to_string())
                 .to_lowercase()
                 == "true",
+            web_app_auth_callback_url: env::var("WEB_APP_AUTH_CALLBACK_URL")
+                .unwrap_or_else(|_| "http://localhost:3000/auth/callback".to_string()),
             github_client: ProviderClient {
                 client_id: env::var("GITHUB_CLIENT_ID").unwrap_or_default(),
                 client_secret: env::var("GITHUB_CLIENT_SECRET").unwrap_or_default(),
@@ -78,6 +109,50 @@ impl Config {
                     .unwrap_or_else(|_| "https://github.com/login/oauth/access_token".to_string()),
                 redirect_uri: env::var("GITHUB_REDIRECT_URI").unwrap_or_else(|_| {
                     "http://localhost:8080/api/auth/oauth/github/callback".to_string()
+                }),
+            },
+            google_client: ProviderClient {
+                client_id: env::var("GOOGLE_CLIENT_ID").unwrap_or_default(),
+                client_secret: env::var("GOOGLE_CLIENT_SECRET").unwrap_or_default(),
+                auth_url: env::var("GOOGLE_AUTH_URL")
+                    .unwrap_or_else(|_| "https://accounts.google.com/o/oauth2/v2/auth".to_string()),
+                token_url: env::var("GOOGLE_TOKEN_URL")
+                    .unwrap_or_else(|_| "https://www.googleapis.com/oauth2/v4/token".to_string()),
+                redirect_uri: env::var("GOOGLE_REDIRECT_URI").unwrap_or_else(|_| {
+                    "http://localhost:8080/api/auth/oauth/google/callback".to_string()
+                }),
+            },
+            facebook_client: ProviderClient {
+                client_id: env::var("FACEBOOK_CLIENT_ID").unwrap_or_default(),
+                client_secret: env::var("FACEBOOK_CLIENT_SECRET").unwrap_or_default(),
+                auth_url: env::var("FACEBOOK_AUTH_URL")
+                    .unwrap_or_else(|_| "https://www.facebook.com/v9.0/dialog/oauth".to_string()),
+                token_url: env::var("FACEBOOK_TOKEN_URL")
+                    .unwrap_or_else(|_| "https://graph.facebook.com/v9.0/oauth/access_token".to_string()),
+                redirect_uri: env::var("FACEBOOK_REDIRECT_URI").unwrap_or_else(|_| {
+                    "http://localhost:8080/api/auth/oauth/facebook/callback".to_string()
+                }),
+            },
+            apple_client: ProviderClient {
+                client_id: env::var("APPLE_CLIENT_ID").unwrap_or_default(),
+                client_secret: env::var("APPLE_CLIENT_SECRET").unwrap_or_default(),
+                auth_url: env::var("APPLE_AUTH_URL")
+                    .unwrap_or_else(|_| "https://appleid.apple.com/auth/authorize".to_string()),
+                token_url: env::var("APPLE_TOKEN_URL")
+                    .unwrap_or_else(|_| "https://appleid.apple.com/auth/token".to_string()),
+                redirect_uri: env::var("APPLE_REDIRECT_URI").unwrap_or_else(|_| {
+                    "http://localhost:8080/api/auth/oauth/apple/callback".to_string()
+                }),
+            },
+            twitter_client: ProviderClient {
+                client_id: env::var("TWITTER_CLIENT_ID").unwrap_or_default(),
+                client_secret: env::var("TWITTER_CLIENT_SECRET").unwrap_or_default(),
+                auth_url: env::var("TWITTER_AUTH_URL")
+                    .unwrap_or_else(|_| "https://api.twitter.com/oauth/authenticate".to_string()),
+                token_url: env::var("TWITTER_TOKEN_URL")
+                    .unwrap_or_else(|_| "https://api.twitter.com/oauth/access_token".to_string()),
+                redirect_uri: env::var("TWITTER_REDIRECT_URI").unwrap_or_else(|_| {
+                    "http://localhost:8080/api/auth/oauth/twitter/callback".to_string()
                 }),
             },
         }

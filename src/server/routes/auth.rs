@@ -1,4 +1,5 @@
-use actix_web::{HttpResponse, Responder, get, post, web};
+use actix_session::Session;
+use actix_web::{HttpResponse, Responder, get, http::header::LOCATION, post, web};
 use oauth2::{AuthorizationCode, CsrfToken, Scope, TokenResponse};
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -129,7 +130,8 @@ async fn auth_provider_callback(
     query: web::Query<OAuthCallbackQuery>,
     config: web::Data<Arc<Config>>,
     pool: web::Data<Arc<PgPool>>,
-) -> impl Responder {
+    session: Session,
+) -> Res<impl Responder> {
     let provider = OAuthProvider::from_str(path.as_str())?;
     let client = services::auth::create_oauth_client(&provider, &config);
     let pg_pool: &PgPool = &**pool;
@@ -151,13 +153,27 @@ async fn auth_provider_callback(
     let existing_user =
         services::user::exists_user_by_email(pg_pool, user_data.email.clone()).await?;
 
-    if existing_user {
+    let auth_response = if existing_user {
         let user = services::user::get_user_by_email(pg_pool, user_data.email).await?;
         let token = services::auth::generate_jwt(&user.id.to_string(), &config.jwt_config)?;
-        Success::ok(AuthResponse { token, user })
+        AuthResponse { token, user }
     } else {
         let user = services::user::create_user_with_oauth(pg_pool, &user_data, &provider).await?;
         let token = services::auth::generate_jwt(&user.id.to_string(), &config.jwt_config)?;
-        Success::ok(AuthResponse { token, user })
-    }
+        AuthResponse { token, user }
+    };
+
+    let user_string = serde_json::to_string(&auth_response.user).unwrap();
+    let redirect_uri = config.web_app_auth_callback_url.as_str();
+
+    session
+        .insert("token", &auth_response.token)
+        .map_err(|_| AppError::Internal("Failed to insert token cookie".to_string()))?;
+    session
+        .insert("user", &user_string)
+        .map_err(|_| AppError::Internal("Failed to insert user cookie".to_string()))?;
+
+    Ok(HttpResponse::Found()
+        .append_header((LOCATION, redirect_uri))
+        .finish())
 }

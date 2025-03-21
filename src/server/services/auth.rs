@@ -12,6 +12,7 @@ use argon2::{
     Argon2,
     password_hash::{PasswordHash, PasswordVerifier},
 };
+use log::warn;
 use chrono::{Duration, Utc};
 use jsonwebtoken::{DecodingKey, Validation, decode};
 use jsonwebtoken::{EncodingKey, Header, encode};
@@ -96,7 +97,11 @@ pub fn create_oauth_client(
 > {
     let provider_client = match provider {
         OAuthProvider::GitHub => &config.github_client,
-        _ => panic!("Unsupported OAuth provider"),
+        OAuthProvider::Google => &config.google_client,
+        OAuthProvider::Facebook => &config.facebook_client,
+        OAuthProvider::Apple => &config.apple_client,
+        OAuthProvider::Twitter => &config.twitter_client,
+        // _ => panic!("Unsupported OAuth provider"),
     };
 
     let client_id = ClientId::new(provider_client.client_id.clone());
@@ -136,12 +141,14 @@ pub async fn authenticate_user(pool: &PgPool, login_data: &LoginRequest) -> Res<
     }
 }
 
+// TODO: support other OAuth providers
 pub async fn fetch_provider_user_data(
     provider: &OAuthProvider,
     access_token: &str,
 ) -> Res<OAuthUserData> {
     match provider {
         OAuthProvider::GitHub => fetch_github_user_data(access_token).await,
+        OAuthProvider::Google => fetch_google_user_data(access_token).await,
         prov => Err(AppError::Internal(format!(
             "Unsupported OAuth provider: {:?}",
             prov
@@ -196,7 +203,7 @@ async fn fetch_github_user_data(access_token: &str) -> Res<OAuthUserData> {
                         .unwrap_or("")
                         .to_string()
                 } else {
-                    log::warn!(
+                    warn!(
                         "Failed to fetch GitHub emails: {:?}",
                         emails_response.status()
                     );
@@ -219,6 +226,42 @@ async fn fetch_github_user_data(access_token: &str) -> Res<OAuthUserData> {
     } else {
         Err(AppError::Internal(format!(
             "GitHub API returned error status: {}",
+            response.status()
+        )))
+    }
+}
+
+async fn fetch_google_user_data(access_token: &str) -> Res<OAuthUserData> {
+    let client = reqwest::Client::new();
+    let request = client
+        .get("https://www.googleapis.com/oauth2/v3/userinfo")
+        .header("Authorization", format!("Bearer {}", access_token));
+
+    let response = request
+        .send()
+        .await
+        .map_err(|e| AppError::Internal(format!("Failed to fetch Google user data: {}", e)))?;
+
+    if response.status().is_success() {
+        let google_user: serde_json::Value = response
+            .json()
+            .await
+            .map_err(|e| AppError::Internal(format!("Failed to parse Google user data: {}", e)))?;
+
+        let email = google_user["email"].as_str().unwrap_or("").to_string();
+        let first_name = google_user["given_name"].as_str().unwrap_or("").to_string();
+        let last_name = google_user["family_name"].as_str().unwrap_or("").to_string();
+        let provider_user_id = google_user["sub"].to_string();
+
+        Ok(OAuthUserData {
+            email,
+            first_name,
+            last_name,
+            provider_user_id,
+        })
+    } else {
+        Err(AppError::Internal(format!(
+            "Google API returned error status: {}",
             response.status()
         )))
     }

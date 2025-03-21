@@ -8,21 +8,27 @@ use super::error::{AppError, Res};
 pub enum OAuthProvider {
     GitHub,
     Google,
-    // Facebook,
+    Facebook,
+    Apple,
+    Twitter,
 }
 impl OAuthProvider {
     pub fn as_str(&self) -> &'static str {
         match self {
             OAuthProvider::GitHub => "github",
             OAuthProvider::Google => "google",
-            // OAuthProvider::Facebook => "facebook",
+            OAuthProvider::Facebook => "facebook",
+            OAuthProvider::Apple => "apple",
+            OAuthProvider::Twitter => "twitter",
         }
     }
     pub fn from_str(s: &str) -> Res<Self> {
         match s {
             "github" => Ok(OAuthProvider::GitHub),
             "google" => Ok(OAuthProvider::Google),
-            // "facebook" => Ok(OAuthProvider::Facebook),
+            "facebook" => Ok(OAuthProvider::Facebook),
+            "apple" => Ok(OAuthProvider::Apple),
+            "twitter" => Ok(OAuthProvider::Twitter),
             ps => Err(AppError::Internal(format!(
                 "Invalid OAuth provider: {}",
                 ps
@@ -33,7 +39,9 @@ impl OAuthProvider {
         match self {
             OAuthProvider::GitHub => vec!["user:email"],
             OAuthProvider::Google => vec!["email profile"],
-            // OAuthProvider::Facebook => vec!["email"],
+            OAuthProvider::Facebook => vec!["email"],
+            OAuthProvider::Apple => vec!["name email"],
+            OAuthProvider::Twitter => vec!["email"],
         }
     }
 }

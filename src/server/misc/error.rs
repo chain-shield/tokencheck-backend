@@ -1,5 +1,6 @@
 use actix_web::HttpResponse;
 use thiserror::Error;
+use log::error;
 
 pub type Res<T> = std::result::Result<T, AppError>;
 
@@ -39,17 +40,17 @@ impl AppError {
         match self {
             // === CONVERSION ERRORS ===
             AppError::Database(error) => {
-                log::error!("Database error: {}", error);
+                error!("Database error: {}", error);
                 HttpResponse::InternalServerError()
                     .json(serde_json::json!({"error": "Internal server error"}))
             }
             AppError::JWT(error) => {
-                log::error!("JWT error: {}", error);
+                error!("JWT error: {}", error);
                 HttpResponse::InternalServerError()
                     .json(serde_json::json!({"error": "Internal server error"}))
             }
             AppError::Reqwest(error) => {
-                log::error!("Reqwest error: {}", error);
+                error!("Reqwest error: {}", error);
                 HttpResponse::InternalServerError()
                     .json(serde_json::json!({"error": "Internal server error"}))
             }
@@ -61,7 +62,7 @@ impl AppError {
             AppError::BadRequest(_) => HttpResponse::BadRequest().json(json_response),
 
             AppError::Internal(error) => {
-                log::error!("Internal error: {}", error);
+                error!("Internal error: {}", error);
                 HttpResponse::InternalServerError()
                     .json(serde_json::json!({"error": "Internal server error"}))
             }
