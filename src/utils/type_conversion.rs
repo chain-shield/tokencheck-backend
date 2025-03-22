@@ -5,7 +5,7 @@
 //! bytes arrays, and decimal values. Additionally, it includes helper functions for truncating
 //! Unicode strings and computing function selectors.
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use ethers::abi::{Address, Bytes};
 use ethers::utils::{format_units, keccak256};
 use ethers::{
