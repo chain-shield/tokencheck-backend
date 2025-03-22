@@ -16,7 +16,7 @@ window.location.href = `${API_BASE_URL}/auth/oauth/${provider}`;
 
 2. Setup `WEB_APP_AUTH_CALLBACK_URL` variable in `.env` file in Rust server. The server will redirect to that URL after it's done with authentication.
 ```
-WEB_APP_AUTH_CALLBACK_URL=http://localhost:3000/auth/callback
+WEB_APP_AUTH_CALLBACK_URL=http://localhost:3000/auth/callback/${provider}
 ```
 
 3. In the component that handles this authentication callback, read cookies `token` and `user`. If not present, make a call to `/api/session` which retrieves token and user data, and returns it as a JSON body in the response.
