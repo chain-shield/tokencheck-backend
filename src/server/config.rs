@@ -57,14 +57,31 @@ pub struct ProviderClient {
 }
 
 #[derive(Clone, Debug)]
+/// Configuration for JSON Web Token (JWT) authentication.
+///
+/// This struct contains the secret key used to sign JWTs and
+/// the expiration time in hours for issued tokens.
 pub struct JwtConfig {
+    /// The secret key used to sign and verify JWTs.
     pub secret: String,
+    /// The expiration time for JWTs in hours.
     pub expiration_hours: i64,
 }
 
 impl JwtConfig {
+    /// Creates a new `JwtConfig` instance from environment variables.
+    ///
+    /// Reads the JWT configuration from environment variables:
+    /// - `JWT_SECRET`: Required. The secret key for JWT signing.
+    /// - `JWT_EXPIRATION_HOURS`: Optional. Defaults to 24 hours if not provided.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if:
+    /// - `JWT_SECRET` environment variable is not set
+    /// - `JWT_EXPIRATION_HOURS` is set but cannot be parsed as a valid number
     pub fn from_env() -> Self {
-        dotenvy::dotenv().ok();
+        dotenv::dotenv().ok();
 
         JwtConfig {
             secret: env::var("JWT_SECRET").expect("JWT_SECRET must be set"),
@@ -77,8 +94,33 @@ impl JwtConfig {
 }
 
 impl Config {
+    /// Creates a new `Config` instance from environment variables.
+    ///
+    /// Loads all configuration values from environment variables with sensible defaults
+    /// for most optional settings. This method initializes the complete server configuration
+    /// including database connection, JWT settings, server parameters, and OAuth provider clients.
+    ///
+    /// # Environment Variables
+    ///
+    /// Required:
+    /// - `DATABASE_URL`: Connection string for the database
+    /// - `JWT_SECRET`: Secret key for JWT signing (via `JwtConfig::from_env()`)
+    ///
+    /// Optional (with defaults):
+    /// - `IP`: Server host (default: "127.0.0.1")
+    /// - `PORT`: Server port (default: 8080)
+    /// - `WORKERS`: Number of worker threads (default: 4)
+    /// - `CORS_ALLOWED_ORIGIN`: Allowed CORS origin (default: "http://localhost:3000")
+    /// - `ENABLE_CONSOLE_LOGGING`: Whether to enable console logging (default: true)
+    /// - `WEB_APP_AUTH_CALLBACK_URL`: Web app callback URL (default: "http://localhost:3000/auth/callback")
+    /// - Various OAuth provider settings (see implementation for details)
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if required environment variables are missing or if
+    /// numeric values cannot be parsed correctly.
     pub fn from_env() -> Self {
-        dotenvy::dotenv().ok();
+        dotenv::dotenv().ok();
 
         Config {
             database_url: env::var("DATABASE_URL").expect("DATABASE_URL must be set"),
@@ -127,8 +169,9 @@ impl Config {
                 client_secret: env::var("FACEBOOK_CLIENT_SECRET").unwrap_or_default(),
                 auth_url: env::var("FACEBOOK_AUTH_URL")
                     .unwrap_or_else(|_| "https://www.facebook.com/v9.0/dialog/oauth".to_string()),
-                token_url: env::var("FACEBOOK_TOKEN_URL")
-                    .unwrap_or_else(|_| "https://graph.facebook.com/v9.0/oauth/access_token".to_string()),
+                token_url: env::var("FACEBOOK_TOKEN_URL").unwrap_or_else(|_| {
+                    "https://graph.facebook.com/v9.0/oauth/access_token".to_string()
+                }),
                 redirect_uri: env::var("FACEBOOK_REDIRECT_URI").unwrap_or_else(|_| {
                     "http://localhost:8080/api/auth/oauth/facebook/callback".to_string()
                 }),

@@ -12,10 +12,10 @@ use argon2::{
     Argon2,
     password_hash::{PasswordHash, PasswordVerifier},
 };
-use log::warn;
 use chrono::{Duration, Utc};
 use jsonwebtoken::{DecodingKey, Validation, decode};
 use jsonwebtoken::{EncodingKey, Header, encode};
+use log::warn;
 use oauth2::basic::*;
 use oauth2::*;
 use sqlx::PgPool;
@@ -23,13 +23,22 @@ use uuid::Uuid;
 
 use crate::server::{config::JwtConfig, models::auth::Claims, services};
 
+/// Generates a JWT token for the given user ID
+///
+/// # Arguments
+/// * `user_id` - The user's UUID as a string
+/// * `config` - JWT configuration containing secret and expiration settings
+///
+/// # Returns
+/// A Result containing the JWT token string or an error
 pub fn generate_jwt(user_id: &str, config: &JwtConfig) -> Res<String> {
     let expiration = Utc::now()
         .checked_add_signed(Duration::hours(config.expiration_hours))
-        .expect("valid timestamp")
+        .ok_or_else(|| AppError::Internal("Failed to calculate token expiration".to_string()))?
         .timestamp();
 
-    let user_uuid = Uuid::parse_str(user_id).expect("valid UUID");
+    let user_uuid = Uuid::parse_str(user_id)
+        .map_err(|_| AppError::BadRequest("Invalid user ID format".to_string()))?;
 
     let claims = Claims {
         user_id: user_uuid,
@@ -46,14 +55,24 @@ pub fn generate_jwt(user_id: &str, config: &JwtConfig) -> Res<String> {
     .map_err(AppError::from)
 }
 
+/// Updates a JWT token with subscription information for the given user
+///
+/// # Arguments
+/// * `user_id` - The user's UUID as a string
+/// * `pool` - Database connection pool
+/// * `config` - JWT configuration containing secret and expiration settings
+///
+/// # Returns
+/// A Result containing the updated JWT token string or an error
 pub async fn update_jwt_with_sub(user_id: &str, pool: &PgPool, config: &JwtConfig) -> Res<String> {
-    let user_uuid = Uuid::parse_str(user_id).expect("valid UUID");
+    let user_uuid = Uuid::parse_str(user_id)
+        .map_err(|_| AppError::BadRequest("Invalid user ID format".to_string()))?;
 
     let subscription = services::sub::get_user_sub(pool, &user_uuid).await.ok();
 
     let expiration = Utc::now()
         .checked_add_signed(Duration::hours(config.expiration_hours))
-        .expect("valid timestamp")
+        .ok_or_else(|| AppError::Internal("Failed to calculate token expiration".to_string()))?
         .timestamp();
 
     let claims = Claims {
@@ -71,6 +90,14 @@ pub async fn update_jwt_with_sub(user_id: &str, pool: &PgPool, config: &JwtConfi
     .map_err(AppError::from)
 }
 
+/// Validates a JWT token and extracts the claims
+///
+/// # Arguments
+/// * `token` - The JWT token string to validate
+/// * `secret` - The secret key used to sign the token
+///
+/// # Returns
+/// A Result containing the validated Claims or an error
 pub fn validate_jwt(token: &str, secret: &str) -> Res<Claims> {
     let token_data = decode::<Claims>(
         token,
@@ -80,6 +107,14 @@ pub fn validate_jwt(token: &str, secret: &str) -> Res<Claims> {
     Ok(token_data.claims)
 }
 
+/// Creates an OAuth client for the specified provider
+///
+/// # Arguments
+/// * `provider` - The OAuth provider to create a client for
+/// * `config` - Application configuration containing OAuth client settings
+///
+/// # Returns
+/// A configured OAuth client for the specified provider
 pub fn create_oauth_client(
     provider: &OAuthProvider,
     config: &Config,
@@ -106,10 +141,12 @@ pub fn create_oauth_client(
 
     let client_id = ClientId::new(provider_client.client_id.clone());
     let client_secret = ClientSecret::new(provider_client.client_secret.clone());
-    let auth_url =
-        AuthUrl::new(provider_client.auth_url.clone()).expect("Invalid authorization endpoint URL");
-    let token_url =
-        TokenUrl::new(provider_client.token_url.clone()).expect("Invalid token endpoint URL");
+    let auth_url = AuthUrl::new(provider_client.auth_url.clone())
+        .map_err(|_| AppError::Internal("Invalid authorization endpoint URL".to_string()))
+        .unwrap(); // This is still unwrapped as it's a configuration error that should fail fast
+    let token_url = TokenUrl::new(provider_client.token_url.clone())
+        .map_err(|_| AppError::Internal("Invalid token endpoint URL".to_string()))
+        .unwrap(); // This is still unwrapped as it's a configuration error that should fail fast
 
     let client = BasicClient::new(client_id)
         .set_client_secret(client_secret)
@@ -117,19 +154,30 @@ pub fn create_oauth_client(
         .set_token_uri(token_url)
         .set_redirect_uri(
             RedirectUrl::new(provider_client.redirect_uri.to_string())
-                .expect("Invalid redirect URL"),
+                .map_err(|_| AppError::Internal("Invalid redirect URL".to_string()))
+                .unwrap(), // This is still unwrapped as it's a configuration error that should fail fast
         );
 
     client
 }
 
+/// Authenticates a user with email and password
+///
+/// # Arguments
+/// * `pool` - Database connection pool
+/// * `login_data` - Login request containing email and password
+///
+/// # Returns
+/// A Result containing the authenticated User or an error
 pub async fn authenticate_user(pool: &PgPool, login_data: &LoginRequest) -> Res<User> {
     let (user, credentials) =
         repo::user::get_user_with_password_hash(pool, login_data.email.clone())
             .await
             .map_err(|_| AppError::BadRequest("User with this email does not exist".to_string()))?;
 
-    let parsed_hash = PasswordHash::new(&credentials.password_hash).unwrap();
+    let parsed_hash = PasswordHash::new(&credentials.password_hash)
+        .map_err(|_| AppError::Internal("Failed to parse password hash".to_string()))?;
+
     let is_valid = Argon2::default()
         .verify_password(login_data.password.as_bytes(), &parsed_hash)
         .is_ok();
@@ -141,7 +189,14 @@ pub async fn authenticate_user(pool: &PgPool, login_data: &LoginRequest) -> Res<
     }
 }
 
-// TODO: support other OAuth providers
+/// Fetches user data from the specified OAuth provider
+///
+/// # Arguments
+/// * `provider` - The OAuth provider to fetch user data from
+/// * `access_token` - The OAuth access token
+///
+/// # Returns
+/// A Result containing the user data or an error
 pub async fn fetch_provider_user_data(
     provider: &OAuthProvider,
     access_token: &str,
@@ -156,6 +211,13 @@ pub async fn fetch_provider_user_data(
     }
 }
 
+/// Fetches user data from GitHub using the provided access token
+///
+/// # Arguments
+/// * `access_token` - GitHub OAuth access token
+///
+/// # Returns
+/// A Result containing the user data or an error
 async fn fetch_github_user_data(access_token: &str) -> Res<OAuthUserData> {
     let client = reqwest::Client::new();
     let request = client
@@ -231,6 +293,13 @@ async fn fetch_github_user_data(access_token: &str) -> Res<OAuthUserData> {
     }
 }
 
+/// Fetches user data from Google using the provided access token
+///
+/// # Arguments
+/// * `access_token` - Google OAuth access token
+///
+/// # Returns
+/// A Result containing the user data or an error
 async fn fetch_google_user_data(access_token: &str) -> Res<OAuthUserData> {
     let client = reqwest::Client::new();
     let request = client
@@ -250,7 +319,10 @@ async fn fetch_google_user_data(access_token: &str) -> Res<OAuthUserData> {
 
         let email = google_user["email"].as_str().unwrap_or("").to_string();
         let first_name = google_user["given_name"].as_str().unwrap_or("").to_string();
-        let last_name = google_user["family_name"].as_str().unwrap_or("").to_string();
+        let last_name = google_user["family_name"]
+            .as_str()
+            .unwrap_or("")
+            .to_string();
         let provider_user_id = google_user["sub"].to_string();
 
         Ok(OAuthUserData {

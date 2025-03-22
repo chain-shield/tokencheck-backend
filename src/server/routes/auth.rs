@@ -19,6 +19,14 @@ use crate::server::{
     services,
 };
 
+/// Registers a new user with the provided credentials.
+///
+/// This endpoint creates a new user account in the system. It first checks if a user
+/// with the provided email already exists, and if not, creates a new user record.
+///
+/// # Errors
+/// - Returns a 400 error if a user with the provided email already exists
+/// - Returns a 500 error if user creation fails
 #[utoipa::path(
     post,
     path = "/api/auth/register",
@@ -46,6 +54,14 @@ async fn register(
     Ok(Success::created(user))
 }
 
+/// Authenticates a user with email and password credentials.
+///
+/// This endpoint validates the provided credentials and, if successful,
+/// generates a JWT token for the authenticated user.
+///
+/// # Errors
+/// - Returns a 401 error if credentials are invalid
+/// - Returns a 500 error if authentication fails for other reasons
 #[utoipa::path(
     post,
     path = "/api/auth/login",
@@ -71,6 +87,13 @@ pub async fn login(
     Success::ok(AuthResponse { token, user })
 }
 
+/// Initiates OAuth authentication flow with the specified provider.
+///
+/// This endpoint redirects the user to the OAuth provider's authentication page.
+/// The provider is specified in the URL path.
+///
+/// # Errors
+/// - Returns a 400 error if the provider is invalid or not supported
 #[utoipa::path(
     get,
     path = "/api/auth/oauth/{provider}",
@@ -108,6 +131,18 @@ pub async fn auth_provider(
         .finish())
 }
 
+/// Handles the OAuth callback from the provider.
+///
+/// This endpoint processes the callback from the OAuth provider after user authentication.
+/// It exchanges the authorization code for an access token, fetches user data from the provider,
+/// and either creates a new user account or authenticates an existing user.
+///
+/// After successful authentication, it stores the user data and token in the session
+/// and redirects to the web application's callback URL.
+///
+/// # Errors
+/// - Returns a 400 error if the provider is invalid
+/// - Returns a 500 error if authentication fails for any reason
 #[utoipa::path(
     get,
     path = "/api/auth/oauth/{provider}/callback",

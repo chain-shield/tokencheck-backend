@@ -774,7 +774,6 @@ dependencies = [
  "chrono",
  "colored 3.0.0",
  "dotenv",
- "dotenvy",
  "ethers",
  "fern",
  "futures",
