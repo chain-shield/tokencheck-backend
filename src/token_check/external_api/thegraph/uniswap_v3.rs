@@ -41,7 +41,8 @@ struct Position {
     #[serde(rename = "token1")]
     _token1: Option<Token>,
     /// Pool information
-    pool: Pool,
+    #[serde(rename = "pool")]
+    _pool: Pool,
     /// Information about lower tick boundary
     #[serde(rename = "tickLower")]
     _tick_lower: Option<Tick>,
@@ -60,23 +61,28 @@ struct Position {
 #[derive(Debug, Deserialize)]
 struct Token {
     /// Token address
-    id: String,
+    #[serde(rename = "id")]
+    _id: String,
     /// Token symbol
-    symbol: String,
+    #[serde(rename = "symbol")]
+    _symbol: String,
     /// Token decimals
-    decimals: String,
+    #[serde(rename = "decimals")]
+    _decimals: String,
 }
 
 /// Structure representing pool information
 #[derive(Debug, Deserialize)]
 struct Pool {
     /// Pool address
-    id: String,
+    #[serde(rename = "id")]
+    _id: String,
     /// Fee tier
     #[serde(rename = "feeTier")]
     _fee_tier: Option<String>,
     /// Current tick
-    tick: Option<String>,
+    #[serde(rename = "tick")]
+    _tick: Option<String>,
     /// Current sqrt price
     #[serde(rename = "sqrtPrice")]
     _sqrt_price: Option<String>,

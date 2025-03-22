@@ -5,7 +5,7 @@ use crate::{
     app_config::AI_MODEL,
     data::{
         provider_manager::get_chain_provider,
-        token_checklist_cache::{get_token_checklist_from_cache, get_token_checklists_from_cache},
+        token_checklist_cache::get_token_checklist_from_cache,
         token_data::get_core_token_data_by_address,
     },
     token_check::{

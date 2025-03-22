@@ -34,9 +34,12 @@ pub enum MoralisApiCallType {
 /// The response contains pagination data along with a `result` field holding the data.
 #[derive(Debug, Deserialize)]
 struct MoralisResponse<T> {
-    page: u32,
-    page_size: u32,
-    cursor: String,
+    #[serde(rename = "page")]
+    _page: u32,
+    #[serde(rename = "page_size")]
+    _page_size: u32,
+    #[serde(rename = "cursor")]
+    _cursor: String,
     result: Vec<T>,
 }
 
@@ -44,14 +47,21 @@ struct MoralisResponse<T> {
 #[derive(Debug, Deserialize, Default)]
 struct MoralisTokenHolder {
     owner_address: String,
-    owner_address_label: Option<String>,
-    entity: Option<String>,
-    entity_logo: Option<String>,
+    #[serde(rename = "owner_address_label")]
+    _owner_address_label: Option<String>,
+    #[serde(rename = "entity")]
+    _entity: Option<String>,
+    #[serde(rename = "entity_logo")]
+    _entity_logo: Option<String>,
     balance: String,
-    balance_formatted: String,
-    usd_value: Option<String>,
-    is_contract: bool,
-    percentage_relative_to_total_supply: f64,
+    #[serde(rename = "balance_formatted")]
+    _balance_formatted: String,
+    #[serde(rename = "usd_value")]
+    _usd_value: Option<String>,
+    #[serde(rename = "is_contract")]
+    _is_contract: bool,
+    #[serde(rename = "percentage_relative_to_total_supply")]
+    _percentage_relative_to_total_supply: f64,
 }
 
 /// Metadata information for an ERC20 token retrieved from the Moralis API.
