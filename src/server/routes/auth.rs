@@ -168,14 +168,20 @@ async fn auth_provider_callback(
     session: Session,
 ) -> Res<impl Responder> {
     let provider = OAuthProvider::from_str(path.as_str())?;
+    log::info!(
+        "OAuth callback processing for provider: {}",
+        provider.as_str()
+    );
+
     let client = services::auth::create_oauth_client(&provider, &config);
     let pg_pool: &PgPool = &**pool;
 
     let http_client = reqwest::ClientBuilder::new()
         .redirect(reqwest::redirect::Policy::none())
         .build()
-        .expect("Client should build");
+        .map_err(|e| AppError::Internal(format!("Failed to build HTTP client: {}", e)))?;
 
+    log::info!("Exchanging authorization code for access token");
     let token = client
         .exchange_code(AuthorizationCode::new(query.code.clone()))
         .request_async(&http_client)
@@ -183,24 +189,52 @@ async fn auth_provider_callback(
         .map_err(|e| AppError::Internal(format!("Failed to exchange code. {}", e)))?;
 
     let access_token = token.access_token().secret();
+    log::info!("Successfully obtained access token, fetching user data");
+
     let user_data = services::auth::fetch_provider_user_data(&provider, access_token).await?;
+    log::info!("User data retrieved: {:?}", user_data);
 
     let existing_user =
         services::user::exists_user_by_email(pg_pool, user_data.email.clone()).await?;
+    log::info!("User exists check: {}", existing_user);
 
     let auth_response = if existing_user {
+        log::info!("Authenticating existing user");
         let user = services::user::get_user_by_email(pg_pool, user_data.email).await?;
         let token = services::auth::generate_jwt(&user.id.to_string(), &config.jwt_config)?;
         AuthResponse { token, user }
     } else {
+        log::info!("Creating new user with OAuth data");
         let user = services::user::create_user_with_oauth(pg_pool, &user_data, &provider).await?;
         let token = services::auth::generate_jwt(&user.id.to_string(), &config.jwt_config)?;
         AuthResponse { token, user }
     };
 
-    let user_string = serde_json::to_string(&auth_response.user).unwrap();
-    let redirect_uri = config.web_app_auth_callback_url.as_str();
+    log::info!("Authentication successful, preparing to set session data");
 
+    let user_string = serde_json::to_string(&auth_response.user)
+        .map_err(|e| AppError::Internal(format!("Failed to serialize user: {}", e)))?;
+
+    // append provider to redirect_uri
+    let redirect_uri = format!(
+        "{}{}",
+        config.web_app_auth_callback_url.as_str(),
+        provider.as_str()
+    );
+    log::info!("Redirecting to: {}", redirect_uri);
+
+    // Try to insert session data
+    match session.insert("token", &auth_response.token) {
+        Ok(_) => log::info!("Token inserted into session successfully"),
+        Err(e) => log::error!("Failed to insert token: {:?}", e),
+    }
+
+    match session.insert("user", &user_string) {
+        Ok(_) => log::info!("User data inserted into session successfully"),
+        Err(e) => log::error!("Failed to insert user data: {:?}", e),
+    }
+
+    // We still need to return errors if session insertion fails
     session
         .insert("token", &auth_response.token)
         .map_err(|_| AppError::Internal("Failed to insert token cookie".to_string()))?;
