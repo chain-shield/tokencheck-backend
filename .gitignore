@@ -16,4 +16,5 @@ Cargo.lock
 # log files
 *.log
 .env
+env.ymal
 moralis.sh
