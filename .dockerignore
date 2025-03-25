@@ -1,0 +1,14 @@
+# Ignore the target directory (build artifacts)
+target/
+
+# Ignore version control files
+.git/
+.gitignore
+
+# Ignore local environment files
+.env
+.env.prod
+
+# Ignore other unnecessary files
+*.md
+*.txt

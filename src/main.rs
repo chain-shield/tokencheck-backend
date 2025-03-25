@@ -20,7 +20,7 @@ use sqlx::migrate::MigrateDatabase;
 use sqlx::PgPool;
 use std::sync::Arc;
 use utoipa::OpenApi;
-use utoipa_swagger_ui::SwaggerUi;
+// use utoipa_swagger_ui::SwaggerUi;
 
 use dotenv::dotenv;
 use tokencheck_backend::utils::logging::setup_logger;
@@ -104,11 +104,15 @@ async fn main() -> std::io::Result<()> {
             )
             .app_data(web::Data::new(pool.clone()))
             .app_data(web::Data::new(config_clone.clone()))
-            .service(
-                #[cfg(debug_assertions)]
-                SwaggerUi::new("/swagger-ui/{_:.*}")
-                    .url("/api-docs/openapi.json", ApiDoc::openapi()),
-            )
+            // .service(
+            //     #[cfg(debug_assertions)]
+            //     SwaggerUi::new("/swagger-ui/{_:.*}")
+            //         .url("/api-docs/openapi.json", ApiDoc::openapi()),
+            //     #[cfg(not(debug_assertions))]
+            //     {
+            //         web::scope("/swagger-ui") // Empty scope as a placeholder
+            //     },
+            // )
             .service(
                 web::scope("/api")
                     .service(server::routes::session::get_session)

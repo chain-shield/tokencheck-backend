@@ -1,7 +1,7 @@
 [package]
 name = "tokencheck-backend"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [dependencies]
 ethers = { version = "2.0.14", features = ["ws", "eip712"] }
@@ -40,7 +40,6 @@ sqlx = { version = "0.8.3", features = [
 argon2 = "0.5.3"
 uuid = { version = "1.16.0", features = ["v4", "serde"] }
 colored = "3.0.0"
-utoipa-swagger-ui = { version = "9", features = ["actix-web"] }
 utoipa = { version = "5.3.1", features = ["actix_extras", "chrono", "uuid"] }
 utoipa-actix-web = "0.1.2"
 oauth2 = "5.0.0"
