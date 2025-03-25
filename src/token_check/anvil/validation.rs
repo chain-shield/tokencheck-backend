@@ -1,3 +1,4 @@
+use crate::app_config::{AppMode, APP_MODE};
 use crate::data::chain_data::CHAIN_DATA;
 use crate::data::dex::Dex;
 use crate::data::token_data::ERC20Token;
@@ -43,7 +44,11 @@ impl ERC20Token {
     /// If any of the simulation steps fail (for example, during the sell simulation), the error will be propagated.
     pub async fn validate_with_simulated_buy_sell(&self) -> anyhow::Result<TokenStatus> {
         // Launch a new anvil node for validation using the websocket URL.
-        let ws_url = CHAIN_DATA.get_address(&self.chain).ws_url.clone();
+        let ws_url = if APP_MODE == AppMode::Production {
+            CHAIN_DATA.get_address(&self.chain).alchemy_url.clone()
+        } else {
+            CHAIN_DATA.get_address(&self.chain).ws_url.clone()
+        };
         let anvil = AnvilTestSimulator::new(&ws_url, &self.chain).await?;
 
         let top_dex_data = self

@@ -1,12 +1,15 @@
 use anyhow::Result;
-use chainshield_backend::data::chain_data::CHAIN_DATA;
-use chainshield_backend::data::dex::TokenDex;
-use chainshield_backend::data::token_data::ERC20Token;
-use chainshield_backend::dex::dex_data::find_top_dex_for_token;
-use chainshield_backend::token_check::external_api::moralis;
-use chainshield_backend::token_check::token_holder_check::get_token_holder_check;
-use chainshield_backend::utils::logging::setup_logger;
-use chainshield_backend::{
+use dotenv::dotenv;
+use ethers::providers::{Provider, Ws};
+use ethers::types::{Address, Chain};
+use std::{sync::Arc, time::Duration};
+use tokencheck_backend::data::chain_data::CHAIN_DATA;
+use tokencheck_backend::data::token_data::ERC20Token;
+use tokencheck_backend::dex::dex_data::find_top_dex_for_token;
+use tokencheck_backend::token_check::external_api::moralis;
+use tokencheck_backend::token_check::token_holder_check::get_token_holder_check;
+use tokencheck_backend::utils::logging::setup_logger;
+use tokencheck_backend::{
     abi::erc20::ERC20,
     app_config::AI_MODEL,
     token_check::{
@@ -14,10 +17,6 @@ use chainshield_backend::{
         external_api::etherscan_api::{get_contract_owner, get_source_code, get_token_info},
     },
 };
-use dotenv::dotenv;
-use ethers::providers::{Provider, Ws};
-use ethers::types::{Address, Chain};
-use std::{sync::Arc, time::Duration};
 use tokio::time::sleep;
 
 pub const WHITELIST_TOKENS: [&str; 4] = [

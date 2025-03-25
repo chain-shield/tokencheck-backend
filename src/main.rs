@@ -22,8 +22,8 @@ use std::sync::Arc;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-use chainshield_backend::utils::logging::setup_logger;
 use dotenv::dotenv;
+use tokencheck_backend::utils::logging::setup_logger;
 
 #[derive(OpenApi)]
 #[openapi(

@@ -1,8 +1,8 @@
-use chainshield_backend::token_check::external_api::etherscan_api::{
-    get_source_code, EtherscanResponse, TokenInfo,
-};
 use dotenv::dotenv;
 use ethers::types::Chain;
+use tokencheck_backend::token_check::external_api::etherscan_api::{
+    get_source_code, EtherscanResponse, TokenInfo,
+};
 
 // TEST ON BASE
 #[tokio::test]

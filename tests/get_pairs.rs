@@ -1,4 +1,6 @@
-use chainshield_backend::{
+use dotenv::dotenv;
+use ethers::{abi::Address, types::Chain};
+use tokencheck_backend::{
     dex::{
         dex_data::find_top_dex_for_token,
         thegraph::{
@@ -8,8 +10,6 @@ use chainshield_backend::{
     },
     utils::logging::setup_logger,
 };
-use dotenv::dotenv;
-use ethers::{abi::Address, types::Chain};
 
 /// Whitelist tokens for mainnet testing.
 pub const WHITELIST_TOKENS_MAINNET: [&str; 4] = [

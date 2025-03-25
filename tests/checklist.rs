@@ -1,14 +1,14 @@
 use anyhow::anyhow;
-use chainshield_backend::app_config::AI_MODEL;
-use chainshield_backend::data::provider_manager::get_chain_provider;
-use chainshield_backend::data::token_checklist_cache::get_token_checklist_from_cache;
-use chainshield_backend::data::token_data::get_core_token_data_by_address;
-use chainshield_backend::data::token_score_cache::get_token_token_score_from_cache;
-use chainshield_backend::token_check::token_checklist::generate_token_checklist;
-use chainshield_backend::token_check::token_score::get_token_score_with_ai;
-use chainshield_backend::utils::logging::setup_logger;
 use dotenv::dotenv;
 use log::info;
+use tokencheck_backend::app_config::AI_MODEL;
+use tokencheck_backend::data::provider_manager::get_chain_provider;
+use tokencheck_backend::data::token_checklist_cache::get_token_checklist_from_cache;
+use tokencheck_backend::data::token_data::get_core_token_data_by_address;
+use tokencheck_backend::data::token_score_cache::get_token_token_score_from_cache;
+use tokencheck_backend::token_check::token_checklist::generate_token_checklist;
+use tokencheck_backend::token_check::token_score::get_token_score_with_ai;
+use tokencheck_backend::utils::logging::setup_logger;
 
 /// Whitelist tokens for mainnet testing.
 pub const WHITELIST_TOKENS_MAINNET: [&str; 4] = [

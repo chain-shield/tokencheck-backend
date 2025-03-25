@@ -762,42 +762,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
 
 [[package]]
-name = "chainshield-backend"
-version = "0.1.0"
-dependencies = [
- "actix-cors",
- "actix-session",
- "actix-web",
- "anyhow",
- "argon2",
- "async-trait",
- "chrono",
- "colored 3.0.0",
- "dotenv",
- "ethers",
- "fern",
- "futures",
- "jsonwebtoken 9.3.1",
- "log",
- "oauth2",
- "once_cell",
- "rand 0.8.5",
- "reqwest 0.12.12",
- "rust_decimal",
- "scraper",
- "serde",
- "serde_json",
- "sqlx",
- "thiserror 2.0.12",
- "tokio",
- "toml",
- "utoipa",
- "utoipa-actix-web",
- "utoipa-swagger-ui",
- "uuid 1.16.0",
-]
-
-[[package]]
 name = "chrono"
 version = "0.4.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5131,6 +5095,42 @@ name = "tinyvec_macros"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
+
+[[package]]
+name = "tokencheck-backend"
+version = "0.1.0"
+dependencies = [
+ "actix-cors",
+ "actix-session",
+ "actix-web",
+ "anyhow",
+ "argon2",
+ "async-trait",
+ "chrono",
+ "colored 3.0.0",
+ "dotenv",
+ "ethers",
+ "fern",
+ "futures",
+ "jsonwebtoken 9.3.1",
+ "log",
+ "oauth2",
+ "once_cell",
+ "rand 0.8.5",
+ "reqwest 0.12.12",
+ "rust_decimal",
+ "scraper",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "thiserror 2.0.12",
+ "tokio",
+ "toml",
+ "utoipa",
+ "utoipa-actix-web",
+ "utoipa-swagger-ui",
+ "uuid 1.16.0",
+]
 
 [[package]]
 name = "tokio"

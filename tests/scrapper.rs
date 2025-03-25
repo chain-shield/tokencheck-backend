@@ -1,4 +1,11 @@
-use chainshield_backend::{
+use dotenv::dotenv;
+use ethers::types::Address;
+use ethers::{
+    providers::{Provider, Ws},
+    types::Chain,
+};
+use std::{sync::Arc, time::Duration};
+use tokencheck_backend::{
     abi::erc20::ERC20,
     app_config::AI_MODEL,
     data::chain_data::CHAIN_DATA,
@@ -8,13 +15,6 @@ use chainshield_backend::{
     },
     utils::web_scrapper::scrape_site_and_get_text,
 };
-use dotenv::dotenv;
-use ethers::types::Address;
-use ethers::{
-    providers::{Provider, Ws},
-    types::Chain,
-};
-use std::{sync::Arc, time::Duration};
 use tokio::time::sleep;
 
 pub const WHITELIST_TOKENS: [&str; 4] = [

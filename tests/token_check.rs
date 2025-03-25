@@ -1,17 +1,17 @@
 use anyhow::Result;
-use chainshield_backend::abi::erc20::ERC20;
-use chainshield_backend::app_config::AI_MODEL;
-use chainshield_backend::data::chain_data::CHAIN_DATA;
-use chainshield_backend::data::token_data::ERC20Token;
-use chainshield_backend::dex::dex_data::find_top_dex_for_token;
-use chainshield_backend::token_check::token_checklist::generate_token_checklist;
-use chainshield_backend::token_check::token_score::{
-    get_token_score_with_ai, get_token_score_with_rules_based_approch,
-};
 use dotenv::dotenv;
 use ethers::providers::{Provider, Ws};
 use ethers::types::{Address, Chain};
 use std::sync::Arc;
+use tokencheck_backend::abi::erc20::ERC20;
+use tokencheck_backend::app_config::AI_MODEL;
+use tokencheck_backend::data::chain_data::CHAIN_DATA;
+use tokencheck_backend::data::token_data::ERC20Token;
+use tokencheck_backend::dex::dex_data::find_top_dex_for_token;
+use tokencheck_backend::token_check::token_checklist::generate_token_checklist;
+use tokencheck_backend::token_check::token_score::{
+    get_token_score_with_ai, get_token_score_with_rules_based_approch,
+};
 
 // mainnet
 pub const WHITELIST_TOKENS_MAINNET: [&str; 3] = [
