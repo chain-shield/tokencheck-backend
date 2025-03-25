@@ -7,15 +7,23 @@ RUN apt-get update && apt-get install -y \
   libssl-dev \
   && rm -rf /var/lib/apt/lists/*
 
-COPY . .
 WORKDIR /app
-RUN cargo build --release
+COPY . .
+RUN cargo build --release --verbose
+# RUN ls -al /app/target
+# RUN ls -al /app/target/release || echo "Release directory not found"
 
 # Stage 2: Create the final image
-FROM debian:buster-slim
+FROM debian:bookworm-slim
 
 # Install runtime dependencies
-RUN apt-get update && apt-get install -y ca-certificates libpq-dev && rm -rf /var/lib/apt/lists/*
+# RUN apt-get update && apt-get install -y ca-certificates libpq-dev && libssl3 && rm -rf /var/lib/apt/lists/*
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+  ca-certificates \
+  libpq-dev \
+  libssl3 \
+  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY --from=builder /app/target/release/tokencheck-backend /app/tokencheck-backend
