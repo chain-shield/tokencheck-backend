@@ -56,7 +56,6 @@ jobs:
             --set-env-vars "TOKEN_TO_BUY_FOR_ANVIL_TEST=0.1" \
             --set-env-vars "MAX_CONNECTIONS=10" \
             --set-env-vars "IP=0.0.0.0" \
-            --set-env-vars "PORT=8080" \
             --set-env-vars "WORKERS=4" \
             --set-env-vars "JWT_EXPIRATION_HOURS=24" \
             --set-env-vars "ENABLE_CONSOLE_LOGGING=true" \
