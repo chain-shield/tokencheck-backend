@@ -1,5 +1,5 @@
 //! Utility functions for handling transaction amounts, wallet management, block information,
-//! and fee calculations.
+//! and fee calculations
 
 use crate::abi::uniswap_quoter::{QuoteExactInputSingleParams, UNISWAP_QUOTER};
 use crate::abi::uniswap_router_v2::UNISWAP_V2_ROUTER;
