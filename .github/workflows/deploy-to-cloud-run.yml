@@ -18,7 +18,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Validate that all required GitHub Secrets are present
       - name: Validate secrets
         run: |
           REQUIRED_SECRETS=(
@@ -34,23 +33,28 @@ jobs:
             "GOOGLE_TOKEN_URL"
             "GOOGLE_REDIRECT_URI"
             "WEB_APP_AUTH_CALLBACK_URL"
-            "PRIVATE_KEY" \
-            "PRIVATE_KEY_2" \
-            "ETHERSCAN_API_KEY" \
-            "THEGRAPH_API_KEY" \
-            "OPENAI_API_KEY" \
-            "DEEPSEEK_API_KEY" \
-            "MORALIS_API_KEY" \
-            "MORALIS_API" \
-            "JWT_SECRET" \
-            "DATABASE_URL" \
+            "PRIVATE_KEY"
+            "PRIVATE_KEY_2"
+            "ETHERSCAN_API_KEY"
+            "THEGRAPH_API_KEY"
+            "OPENAI_API_KEY"
+            "DEEPSEEK_API_KEY"
+            "MORALIS_API_KEY"
+            "MORALIS_API"
+            "JWT_SECRET"
+            "DATABASE_URL"
           )
+          MISSING_SECRETS=0
           for secret in "${REQUIRED_SECRETS[@]}"; do
-            if [ -z "${!secret}" ]; then
+            if [ -z "${{ secrets[format('{0}', secret)] }}" ]; then
               echo "Error: Secret $secret is missing or empty"
-              exit 1
+              MISSING_SECRETS=$((MISSING_SECRETS+1))
             fi
           done
+          if [ $MISSING_SECRETS -gt 0 ]; then
+            echo "Found $MISSING_SECRETS missing secrets. Aborting deployment."
+            exit 1
+          fi
 
       # Authenticate with Google Cloud
       - name: Authenticate with Google Cloud
