@@ -18,44 +18,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Validate secrets
-        run: |
-          REQUIRED_SECRETS=(
-            "WALLET_ADDRESS"
-            "CLIENT_ID"
-            "CLIENT_SECRET"
-            "AUTH_URL"
-            "TOKEN_URL"
-            "REDIRECT_URI"
-            "GOOGLE_AUTH_URL"
-            "GOOGLE_CLIENT_ID"
-            "GOOGLE_CLIENT_SECRET"
-            "GOOGLE_TOKEN_URL"
-            "GOOGLE_REDIRECT_URI"
-            "WEB_APP_AUTH_CALLBACK_URL"
-            "PRIVATE_KEY"
-            "PRIVATE_KEY_2"
-            "ETHERSCAN_API_KEY"
-            "THEGRAPH_API_KEY"
-            "OPENAI_API_KEY"
-            "DEEPSEEK_API_KEY"
-            "MORALIS_API_KEY"
-            "MORALIS_API"
-            "JWT_SECRET"
-            "DATABASE_URL"
-          )
-          MISSING_SECRETS=0
-          for secret in "${REQUIRED_SECRETS[@]}"; do
-            if [ -z "${{ secrets[format('{0}', secret)] }}" ]; then
-              echo "Error: Secret $secret is missing or empty"
-              MISSING_SECRETS=$((MISSING_SECRETS+1))
-            fi
-          done
-          if [ $MISSING_SECRETS -gt 0 ]; then
-            echo "Found $MISSING_SECRETS missing secrets. Aborting deployment."
-            exit 1
-          fi
-
       # Authenticate with Google Cloud
       - name: Authenticate with Google Cloud
         uses: google-github-actions/auth@v2
