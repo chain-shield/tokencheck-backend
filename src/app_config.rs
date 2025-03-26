@@ -60,9 +60,11 @@ pub const TOKEN_HOLDER_THRESHOLD_PERCENTAGE: f64 = 10.0;
 /// List of addresses considered as token lockers on the mainnet.
 ///
 /// These addresses often represent team finances, burn addresses, or mechanisms to lock tokens.
-pub const TOKEN_LOCKERS_MAINNET: [&str; 4] = [
+pub const TOKEN_LOCKERS_MAINNET: [&str; 6] = [
     "0xe2fe530c047f2d85298b07d9333c05737f1435fb", // team finance (lowercased)
     "0x663a5c229c09b049e36dcc11a9b0d4a8eb9db214", // UNCX (lowercased)
+    "0xadb2437e6f65682b85f814fbc12fec0508a7b1d0", // Holds UNCX tokens, governance role
+    "0x7baf06a99f4934b61a1d129af587b9e9746c77f5", // Holds SWAP tokens, potential locker
     "0x000000000000000000000000000000000000dead", // token burn (lowercased)
     "0x0000000000000000000000000000000000000000", // token burn
 ];
