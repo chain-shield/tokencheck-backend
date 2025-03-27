@@ -4,10 +4,10 @@
 
 // HTTP server modules
 mod server;
-
 use crate::server::config::Config;
 use crate::server::middlewares::auth::AuthMiddleware;
 use crate::server::middlewares::logger;
+use actix_web::{dev::Service, web, App, HttpServer};
 
 use actix_cors::Cors;
 use actix_session::config::PersistentSession;
@@ -15,8 +15,8 @@ use actix_session::storage::CookieSessionStore;
 use actix_session::SessionMiddleware;
 use actix_web::cookie::time::Duration;
 use actix_web::cookie::{Key, SameSite};
-use actix_web::{http::header, web, App, HttpServer};
-use log::info;
+use actix_web::http::header;
+use log::{debug, info};
 use sqlx::migrate::MigrateDatabase;
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -115,6 +115,26 @@ async fn main() -> std::io::Result<()> {
                     )
                     .build(),
             )
+            .wrap_fn(|req, srv| {
+                // --- LOG INCOMING REQUEST HEADERS ---
+                debug!("--- Incoming Request Headers ---");
+                for (name, value) in req.headers().iter() {
+                    println!("{}: {:?}", name, value);
+                }
+
+                let fut = srv.call(req);
+                async move {
+                    let res = fut.await?;
+
+                    // --- LOG OUTGOING RESPONSE HEADERS ---
+                    debug!("--- Outgoing Response Headers ---");
+                    for (name, value) in res.headers().iter() {
+                        debug!("{}: {:?}", name, value);
+                    }
+
+                    Ok(res)
+                }
+            })
             .app_data(web::Data::new(pool.clone()))
             .app_data(web::Data::new(config_clone.clone()))
             // .service(
