@@ -50,6 +50,7 @@ jobs:
             --image gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest \
             --platform managed \
             --region ${{ env.REGION }} \
+            --ingress all \
             --allow-unauthenticated \
             --port 8080 \
             --max-instances 1 \

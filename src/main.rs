@@ -75,6 +75,10 @@ async fn main() -> std::io::Result<()> {
 
     // Clone the string before splitting it to keep the string alive
     let cors_origins = config.cors_allowed_origin.clone();
+
+    // if contains localhost (running locally) then its does not need secure cookies
+    let cookie_secure = !cors_origins.contains("localhost");
+
     let origins: Vec<String> = cors_origins.split(',').map(String::from).collect();
 
     HttpServer::new(move || {
@@ -86,7 +90,10 @@ async fn main() -> std::io::Result<()> {
                 header::AUTHORIZATION,
                 header::CONTENT_TYPE,
                 header::ACCEPT,
+                header::COOKIE,
+                header::SET_COOKIE,
             ])
+            .expose_headers(&[header::SET_COOKIE])
             .supports_credentials()
             .max_age(3600);
 
@@ -103,8 +110,8 @@ async fn main() -> std::io::Result<()> {
             .wrap(
                 SessionMiddleware::builder(CookieSessionStore::default(), secret_key)
                     .cookie_name("auth_session".to_string())
-                    .cookie_secure(true) // change to true in production when HTTPS is enabled
-                    .cookie_same_site(SameSite::Lax) // Use Lax for better browser compatibility
+                    .cookie_secure(cookie_secure) // change to true in production when HTTPS is enabled
+                    .cookie_same_site(SameSite::None) // Use Lax for better browser compatibility
                     .cookie_domain(None) // Let browser determine domain
                     .session_lifecycle(
                         PersistentSession::default().session_ttl(Duration::hours(24)),
