@@ -53,13 +53,12 @@ jobs:
             --image gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest \
             --platform managed \
             --region ${{ env.REGION }} \
-            --allow-unauthenticated \  # Allow public access without authentication
-            --port 8080 \              # Container port to receive requests
-            --max-instances 1 \        # Maximum number of instances to scale to
-            --memory 256Mi \           # Memory allocated to each instance
-            --cpu 1 \                  # CPU cores allocated to each instance
-            --concurrency 10 \         # Maximum concurrent requests per instance
-            # Environment variables for the application:
+            --allow-unauthenticated \  
+            --port 8080 \             
+            --max-instances 1 \       
+            --memory 256Mi \          
+            --cpu 1 \                 
+            --concurrency 10 \        
             --set-env-vars "TEST_BUY_AMOUNT=0.0003" \
             --set-env-vars "TOKEN_TO_BUY_FOR_ANVIL_TEST=0.1" \
             --set-env-vars "MAX_CONNECTIONS=10" \
@@ -67,7 +66,6 @@ jobs:
             --set-env-vars "WORKERS=4" \
             --set-env-vars "JWT_EXPIRATION_HOURS=24" \
             --set-env-vars "ENABLE_CONSOLE_LOGGING=true" \
-            # Sensitive environment variables from GitHub secrets:
             --set-env-vars "WALLET_ADDRESS=${{ secrets.WALLET_ADDRESS }}" \
             --set-env-vars "PRIVATE_KEY=${{ secrets.PRIVATE_KEY }}" \
             --set-env-vars "PRIVATE_KEY_2=${{ secrets.PRIVATE_KEY_2 }}" \
@@ -79,13 +77,11 @@ jobs:
             --set-env-vars "MORALIS_API=${{ secrets.MORALIS_API }}" \
             --set-env-vars "JWT_SECRET=${{ secrets.JWT_SECRET }}" \
             --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
-            # OAuth configuration for GitHub authentication:
             --set-env-vars "GITHUB_CLIENT_ID=${{ secrets.CLIENT_ID }}" \
             --set-env-vars "GITHUB_CLIENT_SECRET=${{ secrets.CLIENT_SECRET }}" \
             --set-env-vars "GITHUB_AUTH_URL=${{ secrets.AUTH_URL }}" \
             --set-env-vars "GITHUB_TOKEN_URL=${{ secrets.TOKEN_URL }}" \
             --set-env-vars "GITHUB_REDIRECT_URI=${{ secrets.REDIRECT_URI }}" \
-            # OAuth configuration for Google authentication:
             --set-env-vars "GOOGLE_AUTH_URL=${{ secrets.GOOGLE_AUTH_URL }}" \
             --set-env-vars "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" \
             --set-env-vars "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" \
