@@ -2,63 +2,60 @@
 # It triggers on pushes to the develop branch, builds a Docker image, and deploys it to Cloud Run
 # with all necessary environment variables and configuration settings
 name: Deploy to Cloud Run
-
-# Trigger the workflow only when code is pushed to the develop branch
 on:
   push:
     branches:
       - develop
-
-# Define environment variables at the workflow level for reuse across steps
+# Define environment variables at the workflow level for reuse
 env:
-  PROJECT_ID: keen-oasis-454518-n8    # The Google Cloud project ID
-  SERVICE_NAME: tokencheck-backend    # The name of the Cloud Run service
-  REGION: us-east4                    # The GCP region where the service will be deployed
-
+  PROJECT_ID: keen-oasis-454518-n8
+  SERVICE_NAME: tokencheck-backend
+  REGION: us-east4
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest            # Use the latest Ubuntu runner
-    environment: develop              # Use the 'develop' environment for secrets
+    runs-on: ubuntu-latest
+    environment: develop
     steps:
-      # Step 1: Check out the repository code
+
+      # Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Step 2: Authenticate with Google Cloud using service account credentials
+      # Authenticate with Google Cloud
       - name: Authenticate with Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_CREDENTIALS }}  # Service account key stored in GitHub secrets
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
 
-      # Step 3: Set up Google Cloud SDK for CLI commands
+      # Set up Google Cloud SDK
       - name: Set up Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ env.PROJECT_ID }}
 
-      # Step 4: Configure Docker to push to Google Container Registry (GCR)
+      # Step 4: Configure Docker to push to GCR
       - name: Configure Docker for GCR
         run: gcloud auth configure-docker
 
-      # Step 5: Build the Docker image and push it to GCR
+      # Step 5: Build and push the Docker image
       - name: Build and Push Docker Image
         run: |
           docker build -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest .
           docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
 
-      # Step 6: Deploy the container image to Cloud Run with configuration
+      # Deploy to Cloud Run
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy ${{ env.SERVICE_NAME }} \
             --image gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest \
             --platform managed \
             --region ${{ env.REGION }} \
-            --allow-unauthenticated \  
-            --port 8080 \             
-            --max-instances 1 \       
-            --memory 256Mi \          
-            --cpu 1 \                 
-            --concurrency 10 \        
+            --allow-unauthenticated \
+            --port 8080 \
+            --max-instances 1 \
+            --memory 256Mi \
+            --cpu 1 \
+            --concurrency 10 \
             --set-env-vars "TEST_BUY_AMOUNT=0.0003" \
             --set-env-vars "TOKEN_TO_BUY_FOR_ANVIL_TEST=0.1" \
             --set-env-vars "MAX_CONNECTIONS=10" \
@@ -87,7 +84,8 @@ jobs:
             --set-env-vars "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" \
             --set-env-vars "GOOGLE_TOKEN_URL=${{ secrets.GOOGLE_TOKEN_URL }}" \
             --set-env-vars "GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}" \
-            --set-env-vars "WEB_APP_AUTH_CALLBACK_URL=${{ secrets.WEB_APP_AUTH_CALLBACK_URL }}"
+            --set-env-vars "WEB_APP_AUTH_CALLBACK_URL=${{ secrets.WEB_APP_AUTH_CALLBACK_URL }}" \
+            --set-env-vars "CORS_ALLOWED_ORIGIN=${{ secrets.CORS_ALLOWED_ORIGIN }}"
 
 
 

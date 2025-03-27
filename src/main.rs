@@ -73,9 +73,13 @@ async fn main() -> std::io::Result<()> {
         .expect("Failed to set up database");
     let pool = Arc::new(pool);
 
+    // Clone the string before splitting it to keep the string alive
+    let cors_origins = config.cors_allowed_origin.clone();
+    let origins: Vec<String> = cors_origins.split(',').map(String::from).collect();
+
     HttpServer::new(move || {
         let secret_key = Key::generate();
-        let cors = Cors::default()
+        let mut cors = Cors::default()
             .allowed_origin(&config_clone.cors_allowed_origin)
             .allowed_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS"])
             .allowed_headers(vec![
@@ -85,6 +89,11 @@ async fn main() -> std::io::Result<()> {
             ])
             .supports_credentials()
             .max_age(3600);
+
+        // Clone the origins for each iteration to avoid ownership issues
+        for origin in &origins {
+            cors = cors.allowed_origin(origin);
+        }
 
         let app = App::new()
             .wrap(logger::LoggerMiddleware::new(
