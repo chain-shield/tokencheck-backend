@@ -1,5 +1,5 @@
 use actix_session::Session;
-use actix_web::{HttpResponse, Responder, get, http::header::LOCATION, post, web};
+use actix_web::{get, http::header::LOCATION, post, web, HttpResponse, Responder};
 use oauth2::{AuthorizationCode, CsrfToken, Scope, TokenResponse};
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -217,7 +217,7 @@ async fn auth_provider_callback(
 
     // append provider to redirect_uri
     let redirect_uri = format!(
-        "{}{}",
+        "{}/{}",
         config.web_app_auth_callback_url.as_str(),
         provider.as_str()
     );
