@@ -46,7 +46,7 @@ use tokencheck_backend::utils::logging::setup_logger;
         description = "API documentation for Web Server"
     )
 )]
-struct ApiDoc;
+struct _ApiDoc;
 
 async fn setup_database(database_url: &str) -> Result<PgPool, Box<dyn std::error::Error>> {
     if !sqlx::Postgres::database_exists(database_url).await? {
