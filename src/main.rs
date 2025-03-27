@@ -82,7 +82,7 @@ async fn main() -> std::io::Result<()> {
     let origins: Vec<String> = cors_origins.split(',').map(String::from).collect();
 
     HttpServer::new(move || {
-        let secret_key = Key::generate();
+        let secret_key = Key::derive_from(config_clone.jwt_config.secret.as_bytes());
         let mut cors = Cors::default()
             .allowed_origin(&config_clone.cors_allowed_origin)
             .allowed_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS"])
