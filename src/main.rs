@@ -16,6 +16,7 @@ use actix_session::SessionMiddleware;
 use actix_web::cookie::time::Duration;
 use actix_web::cookie::{Key, SameSite};
 use actix_web::{http::header, web, App, HttpServer};
+use log::info;
 use sqlx::migrate::MigrateDatabase;
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -74,17 +75,16 @@ async fn main() -> std::io::Result<()> {
     let pool = Arc::new(pool);
 
     // Clone the string before splitting it to keep the string alive
-    let cors_origins = config.cors_allowed_origin.clone();
+    let origin = config.cors_allowed_origin.clone();
+    info!("cors origins {}", origin);
 
     // if contains localhost (running locally) then its does not need secure cookies
-    let cookie_secure = !cors_origins.contains("localhost");
-
-    let origins: Vec<String> = cors_origins.split(',').map(String::from).collect();
+    let cookie_secure = !origin.contains("localhost");
+    info!("cookie_secure => {}", cookie_secure);
 
     HttpServer::new(move || {
         let secret_key = Key::derive_from(config_clone.jwt_config.secret.as_bytes());
-        let mut cors = Cors::default()
-            .allowed_origin(&config_clone.cors_allowed_origin)
+        let cors = Cors::default()
             .allowed_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS"])
             .allowed_headers(vec![
                 header::AUTHORIZATION,
@@ -93,14 +93,10 @@ async fn main() -> std::io::Result<()> {
                 header::COOKIE,
                 header::SET_COOKIE,
             ])
+            .allowed_origin(&origin)
             .expose_headers(&[header::SET_COOKIE])
             .supports_credentials()
             .max_age(3600);
-
-        // Clone the origins for each iteration to avoid ownership issues
-        for origin in &origins {
-            cors = cors.allowed_origin(origin);
-        }
 
         let app = App::new()
             .wrap(logger::LoggerMiddleware::new(
