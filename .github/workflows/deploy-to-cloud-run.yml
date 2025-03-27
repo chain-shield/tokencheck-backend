@@ -1,58 +1,65 @@
+# This workflow automates the deployment of the tokencheck-backend service to Google Cloud Run
+# It triggers on pushes to the develop branch, builds a Docker image, and deploys it to Cloud Run
+# with all necessary environment variables and configuration settings
 name: Deploy to Cloud Run
+
+# Trigger the workflow only when code is pushed to the develop branch
 on:
   push:
     branches:
       - develop
-# Define environment variables at the workflow level for reuse
+
+# Define environment variables at the workflow level for reuse across steps
 env:
-  PROJECT_ID: keen-oasis-454518-n8
-  SERVICE_NAME: tokencheck-backend
-  REGION: us-east4
+  PROJECT_ID: keen-oasis-454518-n8    # The Google Cloud project ID
+  SERVICE_NAME: tokencheck-backend    # The name of the Cloud Run service
+  REGION: us-east4                    # The GCP region where the service will be deployed
+
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
-    environment: develop
+    runs-on: ubuntu-latest            # Use the latest Ubuntu runner
+    environment: develop              # Use the 'develop' environment for secrets
     steps:
-
-      # Checkout the repository
+      # Step 1: Check out the repository code
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Authenticate with Google Cloud
+      # Step 2: Authenticate with Google Cloud using service account credentials
       - name: Authenticate with Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}  # Service account key stored in GitHub secrets
 
-      # Set up Google Cloud SDK
+      # Step 3: Set up Google Cloud SDK for CLI commands
       - name: Set up Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ env.PROJECT_ID }}
 
-      # Step 4: Configure Docker to push to GCR
+      # Step 4: Configure Docker to push to Google Container Registry (GCR)
       - name: Configure Docker for GCR
         run: gcloud auth configure-docker
 
-      # Step 5: Build and push the Docker image
+      # Step 5: Build the Docker image and push it to GCR
       - name: Build and Push Docker Image
         run: |
           docker build -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest .
           docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
 
-      # Deploy to Cloud Run
+      # Step 6: Deploy the container image to Cloud Run with configuration
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy ${{ env.SERVICE_NAME }} \
             --image gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest \
             --platform managed \
             --region ${{ env.REGION }} \
-            --allow-unauthenticated \
-            --port 8080 \
-            --max-instances 1 \
-            --memory 256Mi \
-            --cpu 1 \
-            --concurrency 10 \
+            --allow-unauthenticated \  # Allow public access without authentication
+            --port 8080 \              # Container port to receive requests
+            --max-instances 1 \        # Maximum number of instances to scale to
+            --memory 256Mi \           # Memory allocated to each instance
+            --cpu 1 \                  # CPU cores allocated to each instance
+            --concurrency 10 \         # Maximum concurrent requests per instance
+            # Environment variables for the application:
             --set-env-vars "TEST_BUY_AMOUNT=0.0003" \
             --set-env-vars "TOKEN_TO_BUY_FOR_ANVIL_TEST=0.1" \
             --set-env-vars "MAX_CONNECTIONS=10" \
@@ -60,6 +67,7 @@ jobs:
             --set-env-vars "WORKERS=4" \
             --set-env-vars "JWT_EXPIRATION_HOURS=24" \
             --set-env-vars "ENABLE_CONSOLE_LOGGING=true" \
+            # Sensitive environment variables from GitHub secrets:
             --set-env-vars "WALLET_ADDRESS=${{ secrets.WALLET_ADDRESS }}" \
             --set-env-vars "PRIVATE_KEY=${{ secrets.PRIVATE_KEY }}" \
             --set-env-vars "PRIVATE_KEY_2=${{ secrets.PRIVATE_KEY_2 }}" \
@@ -71,17 +79,19 @@ jobs:
             --set-env-vars "MORALIS_API=${{ secrets.MORALIS_API }}" \
             --set-env-vars "JWT_SECRET=${{ secrets.JWT_SECRET }}" \
             --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+            # OAuth configuration for GitHub authentication:
             --set-env-vars "GITHUB_CLIENT_ID=${{ secrets.CLIENT_ID }}" \
             --set-env-vars "GITHUB_CLIENT_SECRET=${{ secrets.CLIENT_SECRET }}" \
             --set-env-vars "GITHUB_AUTH_URL=${{ secrets.AUTH_URL }}" \
             --set-env-vars "GITHUB_TOKEN_URL=${{ secrets.TOKEN_URL }}" \
             --set-env-vars "GITHUB_REDIRECT_URI=${{ secrets.REDIRECT_URI }}" \
+            # OAuth configuration for Google authentication:
             --set-env-vars "GOOGLE_AUTH_URL=${{ secrets.GOOGLE_AUTH_URL }}" \
             --set-env-vars "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" \
             --set-env-vars "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" \
             --set-env-vars "GOOGLE_TOKEN_URL=${{ secrets.GOOGLE_TOKEN_URL }}" \
             --set-env-vars "GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}" \
-            --set-env-vars "WEB_APP_AUTH_CALLBACK_URL=${{ secrets.WEB_APP_AUTH_CALLBACK_URL }}" \
+            --set-env-vars "WEB_APP_AUTH_CALLBACK_URL=${{ secrets.WEB_APP_AUTH_CALLBACK_URL }}"
 
 
 
