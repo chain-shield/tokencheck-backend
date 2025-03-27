@@ -103,7 +103,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(
                 SessionMiddleware::builder(CookieSessionStore::default(), secret_key)
                     .cookie_name("auth_session".to_string())
-                    .cookie_secure(false) // change to true in production when HTTPS is enabled
+                    .cookie_secure(true) // change to true in production when HTTPS is enabled
                     .cookie_same_site(SameSite::Lax) // Use Lax for better browser compatibility
                     .cookie_domain(None) // Let browser determine domain
                     .session_lifecycle(
