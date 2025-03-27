@@ -112,6 +112,7 @@ async fn main() -> std::io::Result<()> {
                     .cookie_name("auth_session".to_string())
                     .cookie_secure(cookie_secure) // change to true in production when HTTPS is enabled
                     .cookie_same_site(SameSite::None) // Use Lax for better browser compatibility
+                    .cookie_http_only(false)
                     .cookie_domain(None) // Let browser determine domain
                     .session_lifecycle(
                         PersistentSession::default().session_ttl(Duration::hours(24)),
