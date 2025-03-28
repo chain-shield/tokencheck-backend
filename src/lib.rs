@@ -1,6 +1,7 @@
 //! ChainShield TokenCheck Backend Library.
 //! This library provides modules for ABI interactions, data management, token checking, logging, and various utilities.
 
+pub mod env_config;
 pub mod dex {
     pub mod thegraph {
         pub mod shared;
@@ -34,6 +35,50 @@ pub mod data {
     pub mod token_checklist_cache;
     pub mod token_data;
     pub mod token_score_cache;
+}
+
+pub mod server {
+    pub mod dtos {
+        pub mod auth;
+        pub mod log;
+        pub mod oauth;
+        pub mod sub;
+        pub mod user;
+    }
+    pub mod middlewares {
+        pub mod auth;
+    }
+    pub mod misc {
+        pub mod error;
+        pub mod oauth;
+        pub mod response;
+        pub mod user;
+    }
+    pub mod models {
+        pub mod api;
+        pub mod auth;
+        pub mod log;
+        pub mod sub;
+        pub mod user;
+    }
+    pub mod repo {
+        pub mod log;
+        pub mod sub;
+        pub mod user;
+    }
+    pub mod routes {
+        pub mod auth;
+        pub mod log;
+        pub mod session;
+        pub mod sub;
+        pub mod user;
+    }
+    pub mod services {
+        pub mod auth;
+        pub mod log;
+        pub mod sub;
+        pub mod user;
+    }
 }
 
 pub mod token_check {

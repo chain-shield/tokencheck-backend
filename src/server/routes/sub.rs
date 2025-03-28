@@ -1,17 +1,19 @@
-use actix_web::{Responder, get, post, web};
+use actix_web::{get, post, web, Responder};
 use sqlx::PgPool;
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::server::{
-    config::Config,
-    dtos::sub::{SubscriptionCreateRequest, SubscriptionResponse},
-    misc::response::Success,
-    models::{
-        auth::Claims,
-        sub::{SubscriptionPlan, UserSubscription},
+use crate::{
+    env_config::Config,
+    server::{
+        dtos::sub::{SubscriptionCreateRequest, SubscriptionResponse},
+        misc::response::Success,
+        models::{
+            auth::Claims,
+            sub::{SubscriptionPlan, UserSubscription},
+        },
+        services::{self},
     },
-    services::{self},
 };
 
 #[utoipa::path(

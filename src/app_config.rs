@@ -6,15 +6,6 @@
 use crate::{data::dex::Dex, token_check::ai::ai_submission::AIModel};
 use ethers::types::Chain;
 
-/// Represents the operational mode of the application.
-#[derive(Debug, PartialEq, Eq)]
-pub enum AppMode {
-    /// Production mode with live settings.
-    Production,
-    /// Simulation mode for testing and development.
-    Development,
-}
-
 // ==========================================================================
 // CHANGE THESE VALUES TO SET CHAIN AND MODE FOR THE APPLICATION
 // ==========================================================================
@@ -28,10 +19,6 @@ pub const DEXES: [Dex; 2] = [Dex::UniswapV2, Dex::UniswapV3];
 /// Specifies the blockchain chain where the application operates.
 /// Adjust this value to target a different chain (e.g., Mainnet, Testnet).
 // pub const CHAIN: Chain = Chain::Mainnet;
-
-/// Defines the mode in which the application runs.
-/// Use `AppMode::Production` for live environments or `AppMode::Simulation` for testing.
-pub const APP_MODE: AppMode = AppMode::Production;
 
 /// Specifies the AI model used for token analysis.
 pub const AI_MODEL: AIModel = AIModel::OpenAi;

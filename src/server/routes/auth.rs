@@ -4,19 +4,21 @@ use oauth2::{AuthorizationCode, CsrfToken, Scope, TokenResponse};
 use sqlx::PgPool;
 use std::sync::Arc;
 
-use crate::server::{
-    config::Config,
-    dtos::{
-        auth::{AuthResponse, LoginRequest, RegisterRequest},
-        oauth::OAuthCallbackQuery,
+use crate::{
+    env_config::Config,
+    server::{
+        dtos::{
+            auth::{AuthResponse, LoginRequest, RegisterRequest},
+            oauth::OAuthCallbackQuery,
+        },
+        misc::{
+            error::{AppError, Res},
+            oauth::OAuthProvider,
+            response::Success,
+        },
+        models::user::User,
+        services,
     },
-    misc::{
-        error::{AppError, Res},
-        oauth::OAuthProvider,
-        response::Success,
-    },
-    models::user::User,
-    services,
 };
 
 /// Registers a new user with the provided credentials.

@@ -10,6 +10,8 @@ use std::env;
 /// logging preferences, web application authentication callback URL,
 /// and GitHub client configuration.
 pub struct Config {
+    // environment
+    pub environment: String, // development or production
     /// The URL of the database to connect to.
     pub database_url: String,
     /// Configuration for JWT (JSON Web Token) authentication.
@@ -123,6 +125,7 @@ impl Config {
         dotenv::dotenv().ok();
 
         Config {
+            environment: env::var("ENVIRONMENT").expect("ENVIRONMENT must be set"),
             database_url: env::var("DATABASE_URL").expect("DATABASE_URL must be set"),
             jwt_config: JwtConfig::from_env(),
             server_host: env::var("IP").unwrap_or_else(|_| "127.0.0.1".to_string()),

@@ -3,12 +3,6 @@
 //! that provides REST API endpoints for item management and request logging.
 
 // HTTP server modules
-mod server;
-use crate::server::config::Config;
-use crate::server::middlewares::auth::AuthMiddleware;
-use crate::server::middlewares::logger;
-use actix_web::{dev::Service, web, App, HttpServer};
-
 use actix_cors::Cors;
 use actix_session::config::PersistentSession;
 use actix_session::storage::CookieSessionStore;
@@ -16,10 +10,14 @@ use actix_session::SessionMiddleware;
 use actix_web::cookie::time::Duration;
 use actix_web::cookie::{Key, SameSite};
 use actix_web::http::header;
+use actix_web::{dev::Service, web, App, HttpServer};
 use log::{debug, info};
 use sqlx::migrate::MigrateDatabase;
 use sqlx::PgPool;
 use std::sync::Arc;
+use tokencheck_backend::env_config::Config;
+use tokencheck_backend::server;
+use tokencheck_backend::server::middlewares::auth::AuthMiddleware;
 use utoipa::OpenApi;
 // use utoipa_swagger_ui::SwaggerUi;
 
@@ -99,9 +97,6 @@ async fn main() -> std::io::Result<()> {
             .max_age(3600);
 
         let app = App::new()
-            .wrap(logger::LoggerMiddleware::new(
-                config_clone.console_logging_enabled,
-            ))
             .wrap(cors)
             .wrap(
                 SessionMiddleware::builder(CookieSessionStore::default(), secret_key)
@@ -109,7 +104,12 @@ async fn main() -> std::io::Result<()> {
                     .cookie_secure(cookie_secure) // change to true in production when HTTPS is enabled
                     .cookie_same_site(SameSite::None) // Use Lax for better browser compatibility
                     .cookie_http_only(false)
-                    .cookie_domain(None) // Let browser determine domain
+                    .cookie_domain(if config_clone.environment == "production" {
+                        Some(".us-east4.run.app".to_string()) // gcp domain , switch to
+                                                              // tokencheck.ai  once live
+                    } else {
+                        None // let browser set
+                    })
                     .session_lifecycle(
                         PersistentSession::default().session_ttl(Duration::hours(24)),
                     )

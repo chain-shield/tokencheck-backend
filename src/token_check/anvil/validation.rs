@@ -1,7 +1,9 @@
-use crate::app_config::{AppMode, APP_MODE};
+use std::sync::Arc;
+
 use crate::data::chain_data::CHAIN_DATA;
 use crate::data::dex::Dex;
 use crate::data::token_data::ERC20Token;
+use crate::env_config::Config;
 use crate::token_check::anvil::simlator::AnvilTestSimulator;
 use crate::token_check::anvil::tx_trait::Txs;
 use ethers::providers::Middleware;
@@ -43,8 +45,9 @@ impl ERC20Token {
     ///
     /// If any of the simulation steps fail (for example, during the sell simulation), the error will be propagated.
     pub async fn validate_with_simulated_buy_sell(&self) -> anyhow::Result<TokenStatus> {
+        let config = Config::from_env();
         // Launch a new anvil node for validation using the websocket URL.
-        let ws_url = if APP_MODE == AppMode::Production {
+        let ws_url = if config.environment == "production" {
             CHAIN_DATA.get_address(&self.chain).alchemy_url.clone()
         } else {
             CHAIN_DATA.get_address(&self.chain).ws_url.clone()

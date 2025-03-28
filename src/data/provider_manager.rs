@@ -4,7 +4,8 @@ use ethers::types::Chain;
 use log::error;
 use std::{collections::HashMap, sync::Arc};
 
-use crate::app_config::{AppMode, APP_MODE, CHAINS};
+use crate::app_config::CHAINS;
+use crate::env_config::Config;
 
 use super::chain_data::CHAIN_DATA;
 
@@ -36,9 +37,10 @@ pub async fn get_chain_provider(chain: &Chain) -> anyhow::Result<Arc<Provider<Ws
     // Check if providers are already initialized
     if PROVIDERS_HASH.get().is_none() {
         // Initialize if not already done
+        let config = Config::from_env();
         let mut provider_hash = HashMap::<Chain, Provider<Ws>>::new();
         for chain in CHAINS {
-            let ws_url = if APP_MODE == AppMode::Production {
+            let ws_url = if config.environment == "production" {
                 CHAIN_DATA.get_address(&chain).alchemy_url.clone()
             } else {
                 CHAIN_DATA.get_address(&chain).ws_url.clone()

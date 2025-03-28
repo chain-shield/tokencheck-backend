@@ -1,27 +1,29 @@
-use crate::server::{
-    config::Config,
-    dtos::{auth::LoginRequest, oauth::OAuthUserData},
-    misc::{
-        error::{AppError, Res},
-        oauth::OAuthProvider,
+use crate::{
+    env_config::{Config, JwtConfig},
+    server::{
+        dtos::{auth::LoginRequest, oauth::OAuthUserData},
+        misc::{
+            error::{AppError, Res},
+            oauth::OAuthProvider,
+        },
+        models::user::User,
+        repo,
     },
-    models::user::User,
-    repo,
 };
 use argon2::{
-    Argon2,
     password_hash::{PasswordHash, PasswordVerifier},
+    Argon2,
 };
 use chrono::{Duration, Utc};
-use jsonwebtoken::{DecodingKey, Validation, decode};
-use jsonwebtoken::{EncodingKey, Header, encode};
+use jsonwebtoken::{decode, DecodingKey, Validation};
+use jsonwebtoken::{encode, EncodingKey, Header};
 use log::warn;
 use oauth2::basic::*;
 use oauth2::*;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::server::{config::JwtConfig, models::auth::Claims, services};
+use crate::server::{models::auth::Claims, services};
 
 /// Generates a JWT token for the given user ID
 ///
