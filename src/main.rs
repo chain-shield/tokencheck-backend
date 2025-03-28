@@ -107,7 +107,7 @@ async fn main() -> std::io::Result<()> {
                     } else {
                         SameSite::Lax
                     }) // Use Lax for better browser compatibility
-                    .cookie_http_only(false)
+                    .cookie_http_only(true)
                     .cookie_domain(if config_clone.environment == "production" {
                         Some(".tokencheck.ai".to_string())
                     // gcp domain , switch to
