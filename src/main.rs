@@ -109,7 +109,7 @@ async fn main() -> std::io::Result<()> {
                     }) // Use Lax for better browser compatibility
                     .cookie_http_only(false)
                     .cookie_domain(if config_clone.environment == "production" {
-                        Some("tokencheck-1077857042780.us-east4.run.app".to_string())
+                        Some(".tokencheck.ai".to_string())
                     // gcp domain , switch to
                     // tokencheck.ai  once live
                     } else {

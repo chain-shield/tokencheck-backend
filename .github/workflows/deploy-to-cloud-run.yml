@@ -12,6 +12,7 @@ env:
   SERVICE_NAME: tokencheck-backend
   REGION: us-east4
   ENVIRONMENT: production
+  CORS_ALLOWED_ORIGIN: https://tokencheck.ai 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -88,7 +89,7 @@ jobs:
             --set-env-vars "GOOGLE_TOKEN_URL=${{ secrets.GOOGLE_TOKEN_URL }}" \
             --set-env-vars "GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}" \
             --set-env-vars "WEB_APP_AUTH_CALLBACK_URL=${{ secrets.WEB_APP_AUTH_CALLBACK_URL }}" \
-            --set-env-vars "CORS_ALLOWED_ORIGIN=${{ secrets.CORS_ALLOWED_ORIGIN }}"
+            --set-env-vars "CORS_ALLOWED_ORIGIN=${{ env.CORS_ALLOWED_ORIGIN }}"
 
 
 
