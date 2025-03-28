@@ -102,7 +102,11 @@ async fn main() -> std::io::Result<()> {
                 SessionMiddleware::builder(CookieSessionStore::default(), secret_key)
                     .cookie_name("auth_session".to_string())
                     .cookie_secure(cookie_secure) // change to true in production when HTTPS is enabled
-                    .cookie_same_site(SameSite::None) // Use Lax for better browser compatibility
+                    .cookie_same_site(if cookie_secure {
+                        SameSite::None
+                    } else {
+                        SameSite::Lax
+                    }) // Use Lax for better browser compatibility
                     .cookie_http_only(false)
                     .cookie_domain(if config_clone.environment == "production" {
                         Some(".us-east4.run.app".to_string()) // gcp domain , switch to
