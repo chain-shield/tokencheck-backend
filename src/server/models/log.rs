@@ -1,10 +1,10 @@
 use chrono::NaiveDateTime;
 use serde::Serialize;
 use sqlx::types::{JsonValue, ipnetwork::IpNetwork};
-use utoipa::ToSchema;
+// use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, sqlx::FromRow, Serialize, ToSchema)]
+#[derive(Debug, Clone, sqlx::FromRow, Serialize)]
 pub struct Log {
     pub id: Uuid,
     pub timestamp: NaiveDateTime,
@@ -15,7 +15,7 @@ pub struct Log {
     pub params: Option<JsonValue>,
     pub request_body: Option<JsonValue>,
     pub response_body: Option<JsonValue>,
-    #[schema(value_type = String)]
+    // #[schema(value_type = String)]
     pub ip_address: IpNetwork,
     pub user_agent: String,
 }

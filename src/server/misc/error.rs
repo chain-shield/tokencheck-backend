@@ -16,12 +16,15 @@ pub enum AppError {
     #[error("Reqwest error: {0}")]
     Reqwest(#[from] reqwest::Error),
 
+    #[error("Stripe error: {0}")]
+    Stripe(#[from] stripe::StripeError),
+
     // === APPLICATION ERRORS ===
     #[error("Authorization error: {0}")]
     Unauthorized(String),
 
     #[error("Resource conflict: {0}")]
-    Conflict(String),
+    Forbidden(String),
 
     #[error("Resource not found: {0}")]
     NotFound(String),
@@ -54,10 +57,15 @@ impl AppError {
                 HttpResponse::InternalServerError()
                     .json(serde_json::json!({"error": "Internal server error"}))
             }
+            AppError::Stripe(error) => {
+                error!("Stripe error: {}", error);
+                HttpResponse::InternalServerError()
+                    .json(serde_json::json!({"error": "Internal server error"}))
+            }
 
             // === APPLICATION ERRORS ===
             AppError::Unauthorized(_) => HttpResponse::Unauthorized().json(json_response),
-            AppError::Conflict(_) => HttpResponse::Conflict().json(json_response),
+            AppError::Forbidden(_) => HttpResponse::Forbidden().json(json_response),
             AppError::NotFound(_) => HttpResponse::NotFound().json(json_response),
             AppError::BadRequest(_) => HttpResponse::BadRequest().json(json_response),
 

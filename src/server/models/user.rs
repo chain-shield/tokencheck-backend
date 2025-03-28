@@ -1,9 +1,9 @@
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
+// use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, sqlx::FromRow, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, sqlx::FromRow, Serialize, Deserialize)]
 pub struct User {
     pub id: Uuid,
     pub email: String,
@@ -14,6 +14,7 @@ pub struct User {
     pub updated_at: NaiveDateTime,
     pub verification_origin: String,
     pub verified: bool,
+    pub stripe_customer_id: Option<String>,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow, Serialize)]

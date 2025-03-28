@@ -10,8 +10,6 @@ use std::env;
 /// logging preferences, web application authentication callback URL,
 /// and GitHub client configuration.
 pub struct Config {
-    // environment
-    pub environment: String, // development or production
     /// The URL of the database to connect to.
     pub database_url: String,
     /// Configuration for JWT (JSON Web Token) authentication.
@@ -29,15 +27,19 @@ pub struct Config {
     /// The URL that the web application will redirect to after authentication.
     pub web_app_auth_callback_url: String,
     /// Configuration for the GitHub OAuth2 client.
-    pub github_client: ProviderClient,
+    pub github_client: OAuthProviderClient,
     /// Configuration for the Google OAuth2 client.
-    pub google_client: ProviderClient,
+    pub google_client: OAuthProviderClient,
     /// Configuration for the Facebook OAuth2 client.
-    pub facebook_client: ProviderClient,
+    pub facebook_client: OAuthProviderClient,
     /// Configuration for the Apple OAuth2 client.
-    pub apple_client: ProviderClient,
-    /// Configuration for the Twitter OAuth2 client.
-    pub twitter_client: ProviderClient,
+    pub apple_client: OAuthProviderClient,
+    /// Configuration for the X OAuth2 client.
+    pub x_client: OAuthProviderClient,
+    /// Stripe secret key
+    pub stripe_secret_key: String,
+    /// Stripe webhook secret
+    pub stripe_webhook_secret: String,
 }
 
 #[derive(Clone, Debug)]
@@ -45,7 +47,7 @@ pub struct Config {
 ///
 /// It contains the client ID and secret, as well as the authentication and token URLs required
 /// for the OAuth 2.0 flow. The redirect URI is also stored for use after successful authentication.
-pub struct ProviderClient {
+pub struct OAuthProviderClient {
     /// The client ID for the OAuth 2.0 provider.
     pub client_id: String,
     /// The client secret for the OAuth 2.0 provider.
@@ -59,31 +61,14 @@ pub struct ProviderClient {
 }
 
 #[derive(Clone, Debug)]
-/// Configuration for JSON Web Token (JWT) authentication.
-///
-/// This struct contains the secret key used to sign JWTs and
-/// the expiration time in hours for issued tokens.
 pub struct JwtConfig {
-    /// The secret key used to sign and verify JWTs.
     pub secret: String,
-    /// The expiration time for JWTs in hours.
     pub expiration_hours: i64,
 }
 
 impl JwtConfig {
-    /// Creates a new `JwtConfig` instance from environment variables.
-    ///
-    /// Reads the JWT configuration from environment variables:
-    /// - `JWT_SECRET`: Required. The secret key for JWT signing.
-    /// - `JWT_EXPIRATION_HOURS`: Optional. Defaults to 24 hours if not provided.
-    ///
-    /// # Panics
-    ///
-    /// This function will panic if:
-    /// - `JWT_SECRET` environment variable is not set
-    /// - `JWT_EXPIRATION_HOURS` is set but cannot be parsed as a valid number
     pub fn from_env() -> Self {
-        dotenv::dotenv().ok();
+        dotenvy::dotenv().ok();
 
         JwtConfig {
             secret: env::var("JWT_SECRET").expect("JWT_SECRET must be set"),
@@ -96,36 +81,13 @@ impl JwtConfig {
 }
 
 impl Config {
-    /// Creates a new `Config` instance from environment variables.
-    ///
-    /// Loads all configuration values from environment variables with sensible defaults
-    /// for most optional settings. This method initializes the complete server configuration
-    /// including database connection, JWT settings, server parameters, and OAuth provider clients.
-    ///
-    /// # Environment Variables
-    ///
-    /// Required:
-    /// - `DATABASE_URL`: Connection string for the database
-    /// - `JWT_SECRET`: Secret key for JWT signing (via `JwtConfig::from_env()`)
-    ///
-    /// Optional (with defaults):
-    /// - `IP`: Server host (default: "127.0.0.1")
-    /// - `PORT`: Server port (default: 8080)
-    /// - `WORKERS`: Number of worker threads (default: 4)
-    /// - `CORS_ALLOWED_ORIGIN`: Allowed CORS origin (default: "http://localhost:3000")
-    /// - `ENABLE_CONSOLE_LOGGING`: Whether to enable console logging (default: true)
-    /// - `WEB_APP_AUTH_CALLBACK_URL`: Web app callback URL (default: "http://localhost:3000/auth/callback")
-    /// - Various OAuth provider settings (see implementation for details)
-    ///
-    /// # Panics
-    ///
-    /// This function will panic if required environment variables are missing or if
-    /// numeric values cannot be parsed correctly.
     pub fn from_env() -> Self {
-        dotenv::dotenv().ok();
+        dotenvy::dotenv().ok();
+
+        let stripe_secret_key = env::var("STRIPE_SECRET_KEY").unwrap_or_default();
+        let stripe_webhook_secret = env::var("STRIPE_WEBHOOK_SECRET").unwrap_or_default();
 
         Config {
-            environment: env::var("ENVIRONMENT").expect("ENVIRONMENT must be set"),
             database_url: env::var("DATABASE_URL").expect("DATABASE_URL must be set"),
             jwt_config: JwtConfig::from_env(),
             server_host: env::var("IP").unwrap_or_else(|_| "127.0.0.1".to_string()),
@@ -145,7 +107,7 @@ impl Config {
                 == "true",
             web_app_auth_callback_url: env::var("WEB_APP_AUTH_CALLBACK_URL")
                 .unwrap_or_else(|_| "http://localhost:3000/auth/callback".to_string()),
-            github_client: ProviderClient {
+            github_client: OAuthProviderClient {
                 client_id: env::var("GITHUB_CLIENT_ID").unwrap_or_default(),
                 client_secret: env::var("GITHUB_CLIENT_SECRET").unwrap_or_default(),
                 auth_url: env::var("GITHUB_AUTH_URL")
@@ -156,7 +118,7 @@ impl Config {
                     "http://localhost:8080/api/auth/oauth/github/callback".to_string()
                 }),
             },
-            google_client: ProviderClient {
+            google_client: OAuthProviderClient {
                 client_id: env::var("GOOGLE_CLIENT_ID").unwrap_or_default(),
                 client_secret: env::var("GOOGLE_CLIENT_SECRET").unwrap_or_default(),
                 auth_url: env::var("GOOGLE_AUTH_URL")
@@ -167,7 +129,7 @@ impl Config {
                     "http://localhost:8080/api/auth/oauth/google/callback".to_string()
                 }),
             },
-            facebook_client: ProviderClient {
+            facebook_client: OAuthProviderClient {
                 client_id: env::var("FACEBOOK_CLIENT_ID").unwrap_or_default(),
                 client_secret: env::var("FACEBOOK_CLIENT_SECRET").unwrap_or_default(),
                 auth_url: env::var("FACEBOOK_AUTH_URL")
@@ -179,7 +141,7 @@ impl Config {
                     "http://localhost:8080/api/auth/oauth/facebook/callback".to_string()
                 }),
             },
-            apple_client: ProviderClient {
+            apple_client: OAuthProviderClient {
                 client_id: env::var("APPLE_CLIENT_ID").unwrap_or_default(),
                 client_secret: env::var("APPLE_CLIENT_SECRET").unwrap_or_default(),
                 auth_url: env::var("APPLE_AUTH_URL")
@@ -190,17 +152,19 @@ impl Config {
                     "http://localhost:8080/api/auth/oauth/apple/callback".to_string()
                 }),
             },
-            twitter_client: ProviderClient {
-                client_id: env::var("TWITTER_CLIENT_ID").unwrap_or_default(),
-                client_secret: env::var("TWITTER_CLIENT_SECRET").unwrap_or_default(),
-                auth_url: env::var("TWITTER_AUTH_URL")
-                    .unwrap_or_else(|_| "https://api.twitter.com/oauth/authenticate".to_string()),
-                token_url: env::var("TWITTER_TOKEN_URL")
-                    .unwrap_or_else(|_| "https://api.twitter.com/oauth/access_token".to_string()),
-                redirect_uri: env::var("TWITTER_REDIRECT_URI").unwrap_or_else(|_| {
-                    "http://localhost:8080/api/auth/oauth/twitter/callback".to_string()
+            x_client: OAuthProviderClient {
+                client_id: env::var("X_CLIENT_ID").unwrap_or_default(),
+                client_secret: env::var("X_CLIENT_SECRET").unwrap_or_default(),
+                auth_url: env::var("X_AUTH_URL")
+                    .unwrap_or_else(|_| "https://x.com/i/oAuth2/authorize".to_string()),
+                token_url: env::var("X_TOKEN_URL")
+                    .unwrap_or_else(|_| "https://api.x.com/2/oAuth2/token".to_string()),
+                redirect_uri: env::var("X_REDIRECT_URI").unwrap_or_else(|_| {
+                    "http://localhost:8080/api/auth/oauth/x/callback".to_string()
                 }),
             },
+            stripe_secret_key,
+            stripe_webhook_secret,
         }
     }
 }

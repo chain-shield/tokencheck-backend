@@ -27,8 +27,15 @@ pub async fn create_user_with_oauth(
     pool: &PgPool,
     user_data: &OAuthUserData,
     provider: &OAuthProvider,
+    config: &crate::server::config::Config,
 ) -> Res<User> {
     let mut tx = pool.begin().await?;
+
+    // Create Stripe customer
+    let client = crate::server::services::pay::create_client(&config.stripe_secret_key);
+    let name = format!("{} {}", user_data.first_name, user_data.last_name);
+    let stripe_customer =
+        crate::server::services::pay::create_customer(&client, &user_data.email, &name).await?;
 
     let user = repo::user::insert_user(
         &mut *tx,
@@ -38,6 +45,7 @@ pub async fn create_user_with_oauth(
             last_name: user_data.last_name.clone(),
             company_name: None,
             verification_origin: UserVerificationOrigin::OAuth,
+            stripe_customer_id: Some(stripe_customer.id.to_string()),
         },
     )
     .await?;
@@ -56,8 +64,18 @@ pub async fn create_user_with_oauth(
     Ok(user)
 }
 
-pub async fn create_user_with_credentials(pool: &PgPool, req: &RegisterRequest) -> Res<User> {
+pub async fn create_user_with_credentials(
+    pool: &PgPool,
+    req: &RegisterRequest,
+    config: &crate::server::config::Config,
+) -> Res<User> {
     let mut tx = pool.begin().await?;
+
+    // Create Stripe customer
+    let client = crate::server::services::pay::create_client(&config.stripe_secret_key);
+    let name = format!("{} {}", req.first_name, req.last_name);
+    let stripe_customer =
+        crate::server::services::pay::create_customer(&client, &req.email, &name).await?;
 
     let user = repo::user::insert_user(
         &mut *tx,
@@ -67,6 +85,7 @@ pub async fn create_user_with_credentials(pool: &PgPool, req: &RegisterRequest) 
             last_name: req.last_name.clone(),
             company_name: req.company_name.clone(),
             verification_origin: UserVerificationOrigin::Email,
+            stripe_customer_id: Some(stripe_customer.id.to_string()),
         },
     )
     .await?;

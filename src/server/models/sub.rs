@@ -1,33 +1,25 @@
-use chrono::NaiveDateTime;
-use serde::Serialize;
-use sqlx::types::JsonValue;
-use utoipa::ToSchema;
-use uuid::Uuid;
+use serde::{Deserialize, Serialize};
+// use utoipa::ToSchema;
 
-#[derive(Debug, Clone, sqlx::FromRow, Serialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubscriptionPlan {
-    pub id: Uuid,
+    pub id: String,
     pub name: String,
     pub description: String,
-    pub price: Option<f32>,
-    pub daily_api_limit: Option<i32>,
-    pub monthly_api_limit: Option<i32>,
-    pub features: Option<JsonValue>,
+    pub price: i64,
+    pub currency: String,
+    pub interval: String,
     pub active: bool,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
+    pub features: Option<Vec<String>>,
+    pub metadata: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Clone, sqlx::FromRow, Serialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserSubscription {
-    pub id: Uuid,
-    pub user_id: Uuid,
-    pub plan_id: Uuid,
-    pub start_date: NaiveDateTime,
-    pub end_date: Option<NaiveDateTime>,
+    pub id: String,
+    pub customer_id: String,
+    pub price_id: String,
     pub status: String,
-    pub auto_renew: bool,
-    pub custom_api_limit: Option<i32>,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
+    pub current_period_end: i64,
+    pub cancel_at_period_end: bool,
 }

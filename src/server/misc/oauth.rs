@@ -10,7 +10,7 @@ pub enum OAuthProvider {
     Google,
     Facebook,
     Apple,
-    Twitter,
+    X,
 }
 impl OAuthProvider {
     pub fn as_str(&self) -> &'static str {
@@ -19,7 +19,7 @@ impl OAuthProvider {
             OAuthProvider::Google => "google",
             OAuthProvider::Facebook => "facebook",
             OAuthProvider::Apple => "apple",
-            OAuthProvider::Twitter => "twitter",
+            OAuthProvider::X => "x",
         }
     }
     pub fn from_str(s: &str) -> Res<Self> {
@@ -28,7 +28,7 @@ impl OAuthProvider {
             "google" => Ok(OAuthProvider::Google),
             "facebook" => Ok(OAuthProvider::Facebook),
             "apple" => Ok(OAuthProvider::Apple),
-            "twitter" => Ok(OAuthProvider::Twitter),
+            "x" => Ok(OAuthProvider::X),
             ps => Err(AppError::Internal(format!(
                 "Invalid OAuth provider: {}",
                 ps
@@ -41,7 +41,7 @@ impl OAuthProvider {
             OAuthProvider::Google => vec!["email profile"],
             OAuthProvider::Facebook => vec!["email"],
             OAuthProvider::Apple => vec!["name email"],
-            OAuthProvider::Twitter => vec!["email"],
+            OAuthProvider::X => vec!["email"],
         }
     }
 }

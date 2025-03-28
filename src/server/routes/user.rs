@@ -5,24 +5,48 @@ use sqlx::PgPool;
 
 use crate::server::{
     misc::response::Success,
-    models::{auth::Claims, user::User},
+    models::auth::Claims,
     services,
 };
 
-#[utoipa::path(
-    get,
-    path = "api/secured/me",
-    tag = "User",
-    summary = "Get current user information",
-    description = "Retrieves information about the authenticated user.",
-    security(
-        ("bearer_auth" = [])
-    ),
-    responses(
-        (status = 200, description = "User information retrieved successfully", body = User),
-        (status = 500, description = "Failed to get user information")
-    )
-)]
+/// Endpoint to retrieve the current authenticated user's information.
+///
+/// This handler extracts the user ID from the authentication claims and fetches
+/// the corresponding user record from the database.
+///
+/// # Input
+/// - `claims`: The JWT claims extracted from the authentication token, containing the user ID
+/// - `pool`: A database connection pool for retrieving user data
+///
+/// # Output
+/// - Success: Returns a JSON object with the user's profile information
+/// - Error: Returns 401 Unauthorized if no valid token is provided or 404 Not Found if user doesn't exist
+///
+/// # Frontend Example
+/// ```javascript
+/// // Using fetch API with the JWT token from login/registration
+/// const response = await fetch('/api/secured/me', {
+///   headers: {
+///     'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+///   }
+/// });
+///
+/// if (response.ok) {
+///   const user = await response.json();
+///   console.log('Current user:', user);
+///   // Example user data:
+///   // {
+///   //   id: "a1b2c3d4-...",
+///   //   email: "user@example.com",
+///   //   first_name: "John",
+///   //   last_name: "Doe",
+///   //   company_name: "ACME Inc",
+///   //   verified: true,
+///   //   created_at: "2023-01-01T12:00:00Z",
+///   //   ...
+///   // }
+/// }
+/// ```
 #[get("/me")]
 async fn me(claims: web::ReqData<Claims>, pool: web::Data<Arc<sqlx::PgPool>>) -> impl Responder {
     let user_id = claims.user_id;

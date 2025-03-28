@@ -4,7 +4,6 @@ use uuid::Uuid;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Claims {
     pub user_id: Uuid,
+    pub stripe_customer_id: String,
     pub exp: usize,
-    pub plan_id: Uuid,
-    pub sub_status: String,
 }

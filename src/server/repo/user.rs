@@ -49,8 +49,8 @@ pub async fn insert_user<'e, E: Executor<'e, Database = Postgres>>(
     sqlx::query_as!(
         User,
         r#"
-        INSERT INTO users (email, first_name, last_name, company_name, verification_origin, verified)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO users (email, first_name, last_name, company_name, verification_origin, verified, stripe_customer_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *
         "#,
         data.email,
@@ -58,7 +58,8 @@ pub async fn insert_user<'e, E: Executor<'e, Database = Postgres>>(
         data.last_name,
         data.company_name,
         data.verification_origin.to_string(),
-        verified
+        verified,
+        data.stripe_customer_id
     )
     .fetch_one(executor)
     .await
@@ -127,6 +128,7 @@ pub async fn get_user_with_password_hash<'e, E: Executor<'e, Database = Postgres
                 updated_at: record.updated_at,
                 verification_origin: record.verification_origin,
                 verified: record.verified,
+                stripe_customer_id: record.stripe_customer_id,
             },
             AuthCredentials {
                 user_id: record.id,

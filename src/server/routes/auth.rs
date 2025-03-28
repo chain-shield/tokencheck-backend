@@ -1,115 +1,141 @@
 use actix_session::Session;
-use actix_web::{get, http::header::LOCATION, post, web, HttpResponse, Responder};
+use actix_web::{HttpResponse, Responder, get, http::header::LOCATION, post, web};
 use oauth2::{AuthorizationCode, CsrfToken, Scope, TokenResponse};
 use sqlx::PgPool;
 use std::sync::Arc;
 
-use crate::{
-    env_config::Config,
-    server::{
-        dtos::{
-            auth::{AuthResponse, LoginRequest, RegisterRequest},
-            oauth::OAuthCallbackQuery,
-        },
-        misc::{
-            error::{AppError, Res},
-            oauth::OAuthProvider,
-            response::Success,
-        },
-        models::user::User,
-        services,
+use crate::server::{
+    config::Config,
+    dtos::{
+        auth::{AuthResponse, LoginRequest, RegisterRequest},
+        oauth::OAuthCallbackQuery,
     },
+    misc::{
+        error::{AppError, Res},
+        oauth::OAuthProvider,
+        response::Success,
+    },
+    services,
 };
 
-/// Registers a new user with the provided credentials.
+/// Registers a new user with email and password authentication.
 ///
-/// This endpoint creates a new user account in the system. It first checks if a user
-/// with the provided email already exists, and if not, creates a new user record.
+/// # Input
+/// - `req`: JSON payload containing registration information (email, password, names)
+/// - `pool`: Database connection pool
+/// - `config`: Application configuration
 ///
-/// # Errors
-/// - Returns a 400 error if a user with the provided email already exists
-/// - Returns a 500 error if user creation fails
-#[utoipa::path(
-    post,
-    path = "/api/auth/register",
-    tag = "Authentication",
-    summary = "Register new user",
-    description = "Creates a new user account with the provided credentials.",
-    request_body = RegisterRequest,
-    responses(
-        (status = 201, description = "User registered successfully", body = User),
-        (status = 400, description = "Username already exists"),
-        (status = 500, description = "Failed to register user")
-    )
-)]
+/// # Output
+/// - Success: Returns the created user object with 201 Created status
+/// - Error: Returns 400 Bad Request if the email already exists
+///
+/// # Frontend Example
+/// ```javascript
+/// // Using fetch API
+/// const response = await fetch('/api/auth/register', {
+///   method: 'POST',
+///   headers: {
+///     'Content-Type': 'application/json'
+///   },
+///   body: JSON.stringify({
+///     email: 'user@example.com',
+///     password: 'securepassword',
+///     first_name: 'John',
+///     last_name: 'Doe',
+///     company_name: 'ACME Inc' // Optional
+///   })
+/// });
+///
+/// if (response.ok) {
+///   const userData = await response.json();
+///   console.log('Registered user:', userData);
+/// }
+/// ```
 #[post("/register")]
 async fn register(
     req: web::Json<RegisterRequest>,
     pool: web::Data<Arc<sqlx::PgPool>>,
+    config: web::Data<Arc<Config>>,
 ) -> impl Responder {
     let pg_pool: &PgPool = &**pool;
     let username_exists = services::user::exists_user_by_email(pg_pool, req.email.clone()).await?;
     if username_exists {
         return Err(AppError::BadRequest("Username already exists".to_string()));
     }
-    let user = services::user::create_user_with_credentials(pg_pool, &req.into_inner()).await?;
+    let user =
+        services::user::create_user_with_credentials(pg_pool, &req.into_inner(), &config).await?;
     Ok(Success::created(user))
 }
 
-/// Authenticates a user with email and password credentials.
+/// Authenticates a user with email and password.
 ///
-/// This endpoint validates the provided credentials and, if successful,
-/// generates a JWT token for the authenticated user.
+/// # Input
+/// - `login_data`: JSON payload containing email and password
+/// - `config`: Application configuration for JWT generation
+/// - `pool`: Database connection pool
 ///
-/// # Errors
-/// - Returns a 401 error if credentials are invalid
-/// - Returns a 500 error if authentication fails for other reasons
-#[utoipa::path(
-    post,
-    path = "/api/auth/login",
-    tag = "Authentication",
-    summary = "User login",
-    description = "Authenticates a user and returns an access token.",
-    request_body = LoginRequest,
-    responses(
-        (status = 200, description = "Login successful", body = AuthResponse),
-        (status = 401, description = "Invalid credentials"),
-        (status = 500, description = "Login failed")
-    )
-)]
+/// # Output
+/// - Success: Returns an auth response with JWT token and user details
+/// - Error: Returns 401 Unauthorized for invalid credentials
+///
+/// # Frontend Example
+/// ```javascript
+/// // Using fetch API
+/// const response = await fetch('/api/auth/login', {
+///   method: 'POST',
+///   headers: {
+///     'Content-Type': 'application/json'
+///   },
+///   body: JSON.stringify({
+///     email: 'user@example.com',
+///     password: 'securepassword'
+///   })
+/// });
+///
+/// if (response.ok) {
+///   const authData = await response.json();
+///   // Store token for authenticated requests
+///   localStorage.setItem('authToken', authData.token);
+///   console.log('Logged in user:', authData.user);
+/// }
+/// ```
 #[post("/login")]
 pub async fn login(
     login_data: web::Json<LoginRequest>,
     config: web::Data<Arc<Config>>,
     pool: web::Data<Arc<PgPool>>,
-) -> Result<impl Responder, crate::server::misc::error::AppError> {
+) -> Res<impl Responder> {
     let pg_pool: &PgPool = &**pool;
     let user = services::auth::authenticate_user(pg_pool, &login_data.into_inner()).await?;
-    let token = services::auth::generate_jwt(&user.id.to_string(), &config.jwt_config)?;
+    let token = services::auth::generate_jwt(&user, &config.jwt_config)?;
     Success::ok(AuthResponse { token, user })
 }
 
 /// Initiates OAuth authentication flow with the specified provider.
 ///
-/// This endpoint redirects the user to the OAuth provider's authentication page.
-/// The provider is specified in the URL path.
+/// # Input
+/// - `path`: OAuth provider name (google, github, facebook, x, apple)
+/// - `config`: Application configuration with OAuth settings
 ///
-/// # Errors
-/// - Returns a 400 error if the provider is invalid or not supported
-#[utoipa::path(
-    get,
-    path = "/api/auth/oauth/{provider}",
-    tag = "Authentication",
-    summary = "OAuth provider authentication",
-    description = "Redirects to an OAuth provider's authentication page.",
-    params(
-        ("provider" = String, Path, description = "OAuth provider name (google, github, etc.)")
-    ),
-    responses(
-        (status = 302, description = "Redirect to OAuth provider"),
-        (status = 400, description = "Invalid provider")
-    )
-)]
+/// # Output
+/// - Success: Redirects user to the OAuth provider's authentication page
+/// - Error: Returns 400 Bad Request for invalid provider names
+///
+/// # Frontend Example
+/// ```javascript
+/// // This is typically a redirect link in your frontend, not an API call
+/// // Example in React:
+///
+/// function OAuthButton({ provider }) {
+///   return (
+///     <a href={`/api/auth/oauth/${provider}`} className="oauth-button">
+///       Login with {provider}
+///     </a>
+///   );
+/// }
+///
+/// // Usage: <OAuthButton provider="github" />
+/// ```
 #[get("oauth/{provider}")]
 pub async fn auth_provider(
     path: web::Path<String>,
@@ -133,34 +159,27 @@ pub async fn auth_provider(
         .finish())
 }
 
-/// Handles the OAuth callback from the provider.
+/// Handles OAuth callback after user authenticates with the provider.
 ///
-/// This endpoint processes the callback from the OAuth provider after user authentication.
-/// It exchanges the authorization code for an access token, fetches user data from the provider,
-/// and either creates a new user account or authenticates an existing user.
+/// # Input
+/// - `path`: OAuth provider name (google, github, facebook, x, apple)
+/// - `query`: Query parameters containing the authorization code from the OAuth provider
+/// - `config`: Application configuration
+/// - `pool`: Database connection pool
+/// - `session`: User session for storing authentication data
 ///
-/// After successful authentication, it stores the user data and token in the session
-/// and redirects to the web application's callback URL.
+/// # Output
+/// - Success: Redirects to the application callback URL with session data set
+/// - Error: Returns appropriate error responses for various failure scenarios
 ///
-/// # Errors
-/// - Returns a 400 error if the provider is invalid
-/// - Returns a 500 error if authentication fails for any reason
-#[utoipa::path(
-    get,
-    path = "/api/auth/oauth/{provider}/callback",
-    tag = "Authentication",
-    summary = "OAuth callback handling",
-    description = "Processes OAuth provider callback and creates or authenticates a user.",
-    params(
-        ("provider" = String, Path, description = "OAuth provider name (google, github, etc.)"),
-        ("code" = String, Query, description = "Authorization code from OAuth provider")
-    ),
-    responses(
-        (status = 200, description = "Authentication successful", body = AuthResponse),
-        (status = 400, description = "Invalid provider"),
-        (status = 500, description = "Authentication failed")
-    )
-)]
+/// # Note
+/// This endpoint is not called directly from your frontend code.
+/// It's the redirect URL configured with your OAuth provider that users
+/// are sent to after authenticating with the provider.
+///
+/// The frontend application should have a route that matches the
+/// configured web_app_auth_callback_url to handle the redirect after
+/// successful authentication.
 #[get("oauth/{provider}/callback")]
 async fn auth_provider_callback(
     path: web::Path<String>,
@@ -169,21 +188,16 @@ async fn auth_provider_callback(
     pool: web::Data<Arc<PgPool>>,
     session: Session,
 ) -> Res<impl Responder> {
-    let provider = OAuthProvider::from_str(path.as_str())?;
-    log::info!(
-        "OAuth callback processing for provider: {}",
-        provider.as_str()
-    );
-
+    let provider = OAuthProvider::from_str(path.as_str())
+        .map_err(|_| AppError::BadRequest("Invalid provider".to_string()))?;
     let client = services::auth::create_oauth_client(&provider, &config);
     let pg_pool: &PgPool = &**pool;
 
     let http_client = reqwest::ClientBuilder::new()
         .redirect(reqwest::redirect::Policy::none())
         .build()
-        .map_err(|e| AppError::Internal(format!("Failed to build HTTP client: {}", e)))?;
+        .expect("Client should build");
 
-    log::info!("Exchanging authorization code for access token");
     let token = client
         .exchange_code(AuthorizationCode::new(query.code.clone()))
         .request_async(&http_client)
@@ -191,52 +205,25 @@ async fn auth_provider_callback(
         .map_err(|e| AppError::Internal(format!("Failed to exchange code. {}", e)))?;
 
     let access_token = token.access_token().secret();
-    log::info!("Successfully obtained access token, fetching user data");
-
     let user_data = services::auth::fetch_provider_user_data(&provider, access_token).await?;
-    log::info!("User data retrieved: {:?}", user_data);
 
     let existing_user =
         services::user::exists_user_by_email(pg_pool, user_data.email.clone()).await?;
-    log::info!("User exists check: {}", existing_user);
 
     let auth_response = if existing_user {
-        log::info!("Authenticating existing user");
         let user = services::user::get_user_by_email(pg_pool, user_data.email).await?;
-        let token = services::auth::generate_jwt(&user.id.to_string(), &config.jwt_config)?;
+        let token = services::auth::generate_jwt(&user, &config.jwt_config)?;
         AuthResponse { token, user }
     } else {
-        log::info!("Creating new user with OAuth data");
-        let user = services::user::create_user_with_oauth(pg_pool, &user_data, &provider).await?;
-        let token = services::auth::generate_jwt(&user.id.to_string(), &config.jwt_config)?;
+        let user =
+            services::user::create_user_with_oauth(pg_pool, &user_data, &provider, &config).await?;
+        let token = services::auth::generate_jwt(&user, &config.jwt_config)?;
         AuthResponse { token, user }
     };
 
-    log::info!("Authentication successful, preparing to set session data");
+    let user_string = serde_json::to_string(&auth_response.user).unwrap();
+    let redirect_uri = config.web_app_auth_callback_url.as_str();
 
-    let user_string = serde_json::to_string(&auth_response.user)
-        .map_err(|e| AppError::Internal(format!("Failed to serialize user: {}", e)))?;
-
-    // append provider to redirect_uri
-    let redirect_uri = format!(
-        "{}/{}",
-        config.web_app_auth_callback_url.as_str(),
-        provider.as_str()
-    );
-    log::info!("Redirecting to: {}", redirect_uri);
-
-    // Try to insert session data
-    match session.insert("token", &auth_response.token) {
-        Ok(_) => log::info!("Token inserted into session successfully"),
-        Err(e) => log::error!("Failed to insert token: {:?}", e),
-    }
-
-    match session.insert("user", &user_string) {
-        Ok(_) => log::info!("User data inserted into session successfully"),
-        Err(e) => log::error!("Failed to insert user data: {:?}", e),
-    }
-
-    // We still need to return errors if session insertion fails
     session
         .insert("token", &auth_response.token)
         .map_err(|_| AppError::Internal("Failed to insert token cookie".to_string()))?;
