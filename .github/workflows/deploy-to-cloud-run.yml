@@ -11,6 +11,7 @@ env:
   PROJECT_ID: keen-oasis-454518-n8
   SERVICE_NAME: tokencheck-backend
   REGION: us-east4
+  ENVIRONMENT: production
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -64,6 +65,7 @@ jobs:
             --set-env-vars "WORKERS=4" \
             --set-env-vars "JWT_EXPIRATION_HOURS=24" \
             --set-env-vars "ENABLE_CONSOLE_LOGGING=true" \
+            --set-env-vars "ENVIRONMENT=${{ env.ENVIRONMENT }}" \
             --set-env-vars "WALLET_ADDRESS=${{ secrets.WALLET_ADDRESS }}" \
             --set-env-vars "PRIVATE_KEY=${{ secrets.PRIVATE_KEY }}" \
             --set-env-vars "PRIVATE_KEY_2=${{ secrets.PRIVATE_KEY_2 }}" \
