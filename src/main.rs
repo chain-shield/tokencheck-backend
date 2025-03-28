@@ -109,8 +109,8 @@ async fn main() -> std::io::Result<()> {
                     }) // Use Lax for better browser compatibility
                     .cookie_http_only(false)
                     .cookie_domain(if config_clone.environment == "production" {
-                        Some(".us-east4.run.app".to_string()) // gcp domain , switch to
-                                                              // tokencheck.ai  once live
+                        Some(".run.app".to_string()) // gcp domain , switch to
+                                                     // tokencheck.ai  once live
                     } else {
                         None // let browser set
                     })
