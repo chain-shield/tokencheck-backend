@@ -13,6 +13,7 @@ use actix_web::http::header;
 use actix_web::{dev::Service, web, App, HttpServer};
 use log::{debug, info};
 use sqlx::migrate::MigrateDatabase;
+use sqlx::postgres::{PgConnectOptions, PgSslMode};
 use sqlx::PgPool;
 use std::sync::Arc;
 use tokencheck_backend::env_config::Config;
@@ -46,13 +47,58 @@ use tokencheck_backend::utils::logging::setup_logger;
     )
 )]
 struct _ApiDoc;
-
 async fn setup_database(database_url: &str) -> Result<PgPool, Box<dyn std::error::Error>> {
-    if !sqlx::Postgres::database_exists(database_url).await? {
-        sqlx::Postgres::create_database(database_url).await?;
+    // Extract database name using regex or other parsing methods
+    // This is a simple example - you might need to adjust based on your URL format
+    let url = url::Url::parse(database_url)?;
+    let db_name = url.path().trim_start_matches('/');
+
+    // Get username and password from the URL
+    let username = url.username();
+    let password = url.password().unwrap_or("");
+
+    // Get host and port
+    let host = url.host_str().unwrap_or("localhost");
+    let port = url.port().unwrap_or(5432);
+
+    // Create a connection string to the postgres database
+    let admin_url = format!(
+        "postgresql://{}:{}@{}:{}/postgres?sslmode=require",
+        username, password, host, port
+    );
+
+    // Connect to the 'postgres' database
+    let admin_options = admin_url
+        .parse::<PgConnectOptions>()?
+        .ssl_mode(PgSslMode::Require);
+    let admin_pool = PgPool::connect_with(admin_options).await?;
+
+    // Check if the target database exists
+    let exists: bool =
+        sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname = $1)")
+            .bind(db_name)
+            .fetch_one(&admin_pool)
+            .await?;
+
+    // Create the database if it doesn't exist
+    if !exists {
+        sqlx::query(&format!("CREATE DATABASE \"{}\"", db_name))
+            .execute(&admin_pool)
+            .await?;
     }
-    let pool = PgPool::connect(database_url).await?;
+
+    // Close the admin connection
+    admin_pool.close().await;
+
+    // Connect to the target database
+    let options = database_url
+        .parse::<PgConnectOptions>()?
+        .ssl_mode(PgSslMode::Require);
+    let pool = PgPool::connect_with(options).await?;
+
+    // Run migrations
     sqlx::migrate!("./migrations").run(&pool).await?;
+
     Ok(pool)
 }
 

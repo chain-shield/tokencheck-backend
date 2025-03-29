@@ -45,3 +45,4 @@ utoipa-actix-web = "0.1.2"
 oauth2 = "5.0.0"
 thiserror = "2.0.12"
 fern = { version = "0.7.1", features = ["colored"] }
+url = "2.5.4"
