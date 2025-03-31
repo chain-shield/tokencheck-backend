@@ -12,7 +12,6 @@ use actix_web::cookie::{Key, SameSite};
 use actix_web::http::header;
 use actix_web::{dev::Service, web, App, HttpServer};
 use log::{debug, info};
-use sqlx::migrate::MigrateDatabase;
 use sqlx::postgres::{PgConnectOptions, PgSslMode};
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -20,7 +19,6 @@ use tokencheck_backend::env_config::Config;
 use tokencheck_backend::server;
 use tokencheck_backend::server::middlewares::auth::AuthMiddleware;
 use utoipa::OpenApi;
-// use utoipa_swagger_ui::SwaggerUi;
 
 use dotenv::dotenv;
 use tokencheck_backend::utils::logging::setup_logger;
@@ -47,7 +45,10 @@ use tokencheck_backend::utils::logging::setup_logger;
     )
 )]
 struct _ApiDoc;
-async fn setup_database(database_url: &str) -> Result<PgPool, Box<dyn std::error::Error>> {
+async fn setup_database(
+    database_url: &str,
+    environment: &str,
+) -> Result<PgPool, Box<dyn std::error::Error>> {
     // Extract database name using regex or other parsing methods
     // This is a simple example - you might need to adjust based on your URL format
     let url = url::Url::parse(database_url)?;
@@ -61,6 +62,12 @@ async fn setup_database(database_url: &str) -> Result<PgPool, Box<dyn std::error
     let host = url.host_str().unwrap_or("localhost");
     let port = url.port().unwrap_or(5432);
 
+    let pg_ssl_mode: PgSslMode = if environment == "production" {
+        PgSslMode::Require
+    } else {
+        PgSslMode::Disable
+    };
+
     // Create a connection string to the postgres database
     let admin_url = format!(
         "postgresql://{}:{}@{}:{}/postgres?sslmode=require",
@@ -68,9 +75,7 @@ async fn setup_database(database_url: &str) -> Result<PgPool, Box<dyn std::error
     );
 
     // Connect to the 'postgres' database
-    let admin_options = admin_url
-        .parse::<PgConnectOptions>()?
-        .ssl_mode(PgSslMode::Require);
+    let admin_options = admin_url.parse::<PgConnectOptions>()?.ssl_mode(pg_ssl_mode);
     let admin_pool = PgPool::connect_with(admin_options).await?;
 
     // Check if the target database exists
@@ -93,7 +98,7 @@ async fn setup_database(database_url: &str) -> Result<PgPool, Box<dyn std::error
     // Connect to the target database
     let options = database_url
         .parse::<PgConnectOptions>()?
-        .ssl_mode(PgSslMode::Require);
+        .ssl_mode(pg_ssl_mode);
     let pool = PgPool::connect_with(options).await?;
 
     // Run migrations
@@ -113,7 +118,7 @@ async fn main() -> std::io::Result<()> {
         setup_logger().expect("Failed to set up logger");
     }
 
-    let pool = setup_database(&config.database_url)
+    let pool = setup_database(&config.database_url, &config.environment)
         .await
         .expect("Failed to set up database");
     let pool = Arc::new(pool);
@@ -188,15 +193,6 @@ async fn main() -> std::io::Result<()> {
             })
             .app_data(web::Data::new(pool.clone()))
             .app_data(web::Data::new(config_clone.clone()))
-            // .service(
-            //     #[cfg(debug_assertions)]
-            //     SwaggerUi::new("/swagger-ui/{_:.*}")
-            //         .url("/api-docs/openapi.json", ApiDoc::openapi()),
-            //     #[cfg(not(debug_assertions))]
-            //     {
-            //         web::scope("/swagger-ui") // Empty scope as a placeholder
-            //     },
-            // )
             .service(
                 web::scope("/api")
                     .service(server::routes::session::get_session)
