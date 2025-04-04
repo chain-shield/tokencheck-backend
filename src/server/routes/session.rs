@@ -1,5 +1,5 @@
 use actix_session::Session;
-use actix_web::{Responder, get, web};
+use actix_web::{get, web, Responder};
 use serde_json::json;
 
 use crate::server::{

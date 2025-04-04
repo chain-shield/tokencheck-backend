@@ -40,6 +40,7 @@ pub mod data {
 pub mod server {
     pub mod dtos {
         pub mod auth;
+        pub mod key;
         pub mod log;
         pub mod oauth;
         pub mod sub;
@@ -68,6 +69,7 @@ pub mod server {
     }
     pub mod routes {
         pub mod auth;
+        pub mod key;
         pub mod log;
         pub mod session;
         pub mod sub;
@@ -75,6 +77,7 @@ pub mod server {
     }
     pub mod services {
         pub mod auth;
+        pub mod key;
         pub mod log;
         pub mod sub;
         pub mod user;
@@ -118,6 +121,7 @@ pub mod token_check {
     }
 }
 pub mod utils {
+    pub mod encryption;
     pub mod logging;
     pub mod tx;
     pub mod type_conversion;

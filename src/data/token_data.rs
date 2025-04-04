@@ -4,8 +4,8 @@
 use super::provider_manager::get_chain_provider;
 use crate::abi::erc20::ERC20;
 use crate::app_config::CHAINS;
-use crate::dex::dex_data::{TokenDexData, find_top_dex_for_token};
-use anyhow::{Result, anyhow};
+use crate::dex::dex_data::{find_top_dex_for_token, TokenDexData};
+use anyhow::{anyhow, Result};
 use ethers::contract::ContractError;
 use ethers::providers::{Provider, ProviderError, Ws};
 use ethers::types::{Address, Chain};

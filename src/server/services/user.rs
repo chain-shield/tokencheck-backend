@@ -6,9 +6,9 @@ use crate::server::misc::oauth::OAuthProvider;
 use crate::server::misc::user::UserVerificationOrigin;
 use crate::server::models::user::AuthCredentials;
 use crate::server::{models::user::User, repo};
-use argon2::password_hash::SaltString;
 use argon2::password_hash::rand_core::OsRng;
-use argon2::{Argon2, password_hash::PasswordHasher};
+use argon2::password_hash::SaltString;
+use argon2::{password_hash::PasswordHasher, Argon2};
 
 use sqlx::PgPool;
 use uuid::Uuid;

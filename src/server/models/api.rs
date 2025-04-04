@@ -9,7 +9,7 @@ use uuid::Uuid;
 pub struct ApiKey {
     pub id: Uuid,
     pub user_id: Uuid,
-    pub key_hashed: String,
+    pub encrypted_key: String,
     pub name: String,
     pub status: String,
     pub created_at: NaiveDateTime,

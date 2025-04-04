@@ -1,4 +1,4 @@
-use actix_web::{Responder, get, web};
+use actix_web::{get, web, Responder};
 use std::sync::Arc;
 
 use crate::server::{dtos::log::ReportFilter, misc::response::Success, models::log::Log, services};
