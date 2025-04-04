@@ -1,6 +1,6 @@
 use actix_web::HttpResponse;
-use thiserror::Error;
 use log::error;
+use thiserror::Error;
 
 pub type Res<T> = std::result::Result<T, AppError>;
 
@@ -67,6 +67,15 @@ impl AppError {
                     .json(serde_json::json!({"error": "Internal server error"}))
             }
         }
+    }
+}
+
+impl From<anyhow::Error> for AppError {
+    fn from(err: anyhow::Error) -> Self {
+        // Log the error for debugging
+        error!("Converting anyhow::Error to AppError: {:?}", err);
+        // Map to Internal error by default
+        AppError::Internal(err.to_string())
     }
 }
 

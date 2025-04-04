@@ -211,7 +211,10 @@ async fn main() -> std::io::Result<()> {
                             .service(server::routes::sub::get_all_plans)
                             .service(server::routes::sub::get_plan)
                             .service(server::routes::sub::subscribe)
-                            .service(server::routes::sub::get_my_plan),
+                            .service(server::routes::sub::get_my_plan)
+                            .service(server::routes::key::generate_api_key)
+                            .service(server::routes::key::get_all_user_api_keys)
+                            .service(server::routes::key::delete_user_api_keys),
                     ),
             );
 

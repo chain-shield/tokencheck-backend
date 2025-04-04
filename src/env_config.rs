@@ -16,6 +16,8 @@ pub struct Config {
     pub database_url: String,
     /// Configuration for JWT (JSON Web Token) authentication.
     pub jwt_config: JwtConfig,
+    // key used to encrypt API keys
+    pub encryption_key: String,
     /// The hostname or IP address the server will bind to.
     pub server_host: String,
     /// The port number the server will listen on.
@@ -125,6 +127,7 @@ impl Config {
         dotenv::dotenv().ok();
 
         Config {
+            encryption_key: env::var("ENCRYPTION_KEY").expect("ENCRYPTION_KEY must be set"),
             environment: env::var("ENVIRONMENT").expect("ENVIRONMENT must be set"),
             database_url: env::var("DATABASE_URL").expect("DATABASE_URL must be set"),
             jwt_config: JwtConfig::from_env(),
