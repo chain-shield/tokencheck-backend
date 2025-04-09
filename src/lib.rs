@@ -69,6 +69,7 @@ pub mod server {
     }
     pub mod routes {
         pub mod auth;
+        pub mod healthz;
         pub mod key;
         pub mod log;
         pub mod session;

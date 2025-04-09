@@ -188,6 +188,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(config_clone.clone()))
             .service(
                 web::scope("/api")
+                    .service(server::routes::healthz::healthz)
                     .service(server::routes::session::get_session)
                     .service(
                         web::scope("/auth")
