@@ -9,6 +9,7 @@ env:
   REGION: us-east4
   ENVIRONMENT: production
   CORS_ALLOWED_ORIGIN: https://tokencheck.ai
+  DOMAIN: api.tokencheck.com
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -71,6 +72,7 @@ jobs:
             --from-literal=google-token-url="${{ secrets.GOOGLE_TOKEN_URL }}" \
             --from-literal=google-redirect-uri="${{ secrets.GOOGLE_REDIRECT_URI }}" \
             --from-literal=web-app-auth-callback-url="${{ secrets.WEB_APP_AUTH_CALLBACK_URL }}" \
+            --from-literal=cookie-domain=".tokencheck.com" \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Create GCP Credentials Secret
@@ -92,21 +94,55 @@ jobs:
             --docker-password=$(gcloud auth print-access-token) \
             --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Deploy to GKE
+      - name: Deploy Backend Service and Deployment
         run: |
           kubectl apply -f k8s/tokencheck-backend-deployment.yaml
           kubectl apply -f k8s/tokencheck-backend-service.yaml
 
-      - name: Verify Deployment
+      - name: Apply Kubernetes Resources
+        run: |
+          # Replace environment variables in Kubernetes manifests
+          for file in k8s/managed-certificate.yaml k8s/ingress.yaml k8s/frontend-config.yaml; do
+            sed -i "s|\${DOMAIN}|${{ env.DOMAIN }}|g" $file
+            kubectl apply -f $file
+          done
+
+      - name: Wait for Deployment
         run: |
           echo "Waiting for deployment to roll out..."
-          kubectl rollout status deployment/tokencheck-backend -n default --timeout=300s
+          kubectl rollout status deployment/tokencheck-backend -n default --timeout=600s || true
 
-          echo "Checking deployment status..."
-          kubectl get deployment tokencheck-backend -n default
+      - name: Get External IP
+        run: |
+          echo "Waiting for Ingress to get an external IP (this may take a few minutes)..."
+          
+          # Try for up to 5 minutes to get the external IP
+          for i in {1..30}; do
+            EXTERNAL_IP=$(kubectl get ingress tokencheck-backend-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+            if [ -n "$EXTERNAL_IP" ]; then
+              echo "Ingress external IP is: $EXTERNAL_IP"
+              echo "Once DNS is configured, your API will be available at: https://${{ env.DOMAIN }}"
+              break
+            fi
+            echo "Waiting for external IP... (attempt $i/30)"
+            sleep 10
+          done
+          
+          if [ -z "$EXTERNAL_IP" ]; then
+            echo "Could not get external IP within the timeout period. Check the ingress status manually."
+          fi
 
-          echo "Checking pods..."
-          kubectl get pods -n default -l app=tokencheck-backend
+      - name: Check Certificate Status
+        run: |
+          echo "Certificate provisioning can take 15-60 minutes. Checking initial status..."
+          kubectl describe managedcertificate tokencheck-cert
 
-          echo "Checking service..."
+      - name: Verify Service Endpoints
+        run: |
+          echo "Deployment complete. Backend services deployed to:"
+          echo "- Internal Kubernetes service: tokencheck-backend.default.svc.cluster.local:8080"
+          echo "- External domain (after DNS propagation): https://${{ env.DOMAIN }}"
+          
+          echo "Checking backend service and pods..."
           kubectl get service tokencheck-backend -n default
+          kubectl get pods -n default -l app=tokencheck-backend

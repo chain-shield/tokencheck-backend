@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tokencheck-backend-ingress
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    networking.gke.io/managed-certificates: "tokencheck-cert"
+    networking.gke.io/v1beta1.FrontendConfig: "tokencheck-frontend-config"
+spec:
+  rules:
+  - host: ${DOMAIN}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: tokencheck-backend
+            port:
+              number: 8080
