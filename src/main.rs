@@ -101,9 +101,6 @@ async fn setup_database(
         .ssl_mode(pg_ssl_mode);
     let pool = PgPool::connect_with(options).await?;
 
-    // Run migrations
-    sqlx::migrate!("./migrations").run(&pool).await?;
-
     Ok(pool)
 }
 

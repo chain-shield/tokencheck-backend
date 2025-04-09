@@ -1,0 +1,112 @@
+name: Deploy Backend to GKE
+on:
+  push:
+    branches:
+      - develop
+env:
+  PROJECT_ID: keen-oasis-454518-n8
+  SERVICE_NAME: tokencheck-backend
+  REGION: us-east4
+  ENVIRONMENT: production
+  CORS_ALLOWED_ORIGIN: https://tokencheck.ai
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: develop
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Install gke-gcloud-auth-plugin
+        run: |
+          gcloud components install gke-gcloud-auth-plugin --quiet
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker --quiet
+
+      - name: Build and Push Docker Image
+        run: |
+          docker build -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest .
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
+
+      - name: Get GKE Credentials
+        run: |
+          gcloud container clusters get-credentials tokencheck-cluster \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }}
+
+      - name: Create Application Secrets
+        run: |
+          kubectl create secret generic tokencheck-secrets \
+            --from-literal=encryption-key="${{ secrets.ENCRYPTION_KEY }}" \
+            --from-literal=wallet-address="${{ secrets.WALLET_ADDRESS }}" \
+            --from-literal=private-key="${{ secrets.PRIVATE_KEY }}" \
+            --from-literal=private-key-2="${{ secrets.PRIVATE_KEY_2 }}" \
+            --from-literal=etherscan-api-key="${{ secrets.ETHERSCAN_API_KEY }}" \
+            --from-literal=thegraph-api-key="${{ secrets.THEGRAPH_API_KEY }}" \
+            --from-literal=openai-api-key="${{ secrets.OPENAI_API_KEY }}" \
+            --from-literal=deepseek-api-key="${{ secrets.DEEPSEEK_API_KEY }}" \
+            --from-literal=moralis-api-key="${{ secrets.MORALIS_API_KEY }}" \
+            --from-literal=moralis-api="${{ secrets.MORALIS_API }}" \
+            --from-literal=jwt-secret="${{ secrets.JWT_SECRET }}" \
+            --from-literal=database-url="${{ secrets.DATABASE_URL }}" \
+            --from-literal=client-id="${{ secrets.CLIENT_ID }}" \
+            --from-literal=client-secret="${{ secrets.CLIENT_SECRET }}" \
+            --from-literal=auth-url="${{ secrets.AUTH_URL }}" \
+            --from-literal=token-url="${{ secrets.TOKEN_URL }}" \
+            --from-literal=redirect-uri="${{ secrets.REDIRECT_URI }}" \
+            --from-literal=google-auth-url="${{ secrets.GOOGLE_AUTH_URL }}" \
+            --from-literal=google-client-id="${{ secrets.GOOGLE_CLIENT_ID }}" \
+            --from-literal=google-client-secret="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
+            --from-literal=google-token-url="${{ secrets.GOOGLE_TOKEN_URL }}" \
+            --from-literal=google-redirect-uri="${{ secrets.GOOGLE_REDIRECT_URI }}" \
+            --from-literal=web-app-auth-callback-url="${{ secrets.WEB_APP_AUTH_CALLBACK_URL }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Create GCP Credentials Secret
+        env:
+          GCP_CREDS: ${{ secrets.GCP_CREDENTIALS }}
+        run: |
+          echo "$GCP_CREDS" > credentials.json
+          kubectl create secret generic cloudsql-credentials \
+            --from-file=credentials.json \
+            --dry-run=client -o yaml | kubectl apply -f -
+          rm credentials.json
+
+      - name: Create Image Pull Secret
+        run: |
+          kubectl create secret docker-registry gcr-pull-secret \
+            --namespace default \
+            --docker-server=gcr.io \
+            --docker-username=oauth2accesstoken \
+            --docker-password=$(gcloud auth print-access-token) \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy to GKE
+        run: |
+          kubectl apply -f k8s/tokencheck-backend-deployment.yaml
+          kubectl apply -f k8s/tokencheck-backend-service.yaml
+
+      - name: Verify Deployment
+        run: |
+          echo "Waiting for deployment to roll out..."
+          kubectl rollout status deployment/tokencheck-backend -n default --timeout=300s
+
+          echo "Checking deployment status..."
+          kubectl get deployment tokencheck-backend -n default
+
+          echo "Checking pods..."
+          kubectl get pods -n default -l app=tokencheck-backend
+
+          echo "Checking service..."
+          kubectl get service tokencheck-backend -n default
