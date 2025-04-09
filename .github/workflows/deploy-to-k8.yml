@@ -99,7 +99,7 @@ jobs:
 
       - name: Verify Deployment
         run: |
-          echo "Waiting for deployment to roll out...."
+          echo "Waiting for deployment to roll out..."
           kubectl rollout status deployment/tokencheck-backend -n default --timeout=300s
 
           echo "Checking deployment status..."
