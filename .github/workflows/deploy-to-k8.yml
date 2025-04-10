@@ -1,3 +1,4 @@
+
 name: Deploy Backend to GKE
 on:
   push:
@@ -10,6 +11,7 @@ env:
   ENVIRONMENT: production
   CORS_ALLOWED_ORIGIN: https://tokencheck.ai
   DOMAIN: api.tokencheck.com
+  NAMESPACE: develop
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -46,9 +48,14 @@ jobs:
             --region ${{ env.REGION }} \
             --project ${{ env.PROJECT_ID }}
 
+      - name: Create Namespace if not exists
+        run: |
+          kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Create Application Secrets
         run: |
           kubectl create secret generic tokencheck-secrets \
+            --namespace ${{ env.NAMESPACE }} \
             --from-literal=encryption-key="${{ secrets.ENCRYPTION_KEY }}" \
             --from-literal=wallet-address="${{ secrets.WALLET_ADDRESS }}" \
             --from-literal=private-key="${{ secrets.PRIVATE_KEY }}" \
@@ -81,6 +88,7 @@ jobs:
         run: |
           echo "$GCP_CREDS" > credentials.json
           kubectl create secret generic cloudsql-credentials \
+            --namespace ${{ env.NAMESPACE }} \
             --from-file=credentials.json \
             --dry-run=client -o yaml | kubectl apply -f -
           rm credentials.json
@@ -88,7 +96,7 @@ jobs:
       - name: Create Image Pull Secret
         run: |
           kubectl create secret docker-registry gcr-pull-secret \
-            --namespace default \
+            --namespace ${{ env.NAMESPACE }} \
             --docker-server=gcr.io \
             --docker-username=oauth2accesstoken \
             --docker-password=$(gcloud auth print-access-token) \
@@ -102,7 +110,7 @@ jobs:
       - name: Apply Kubernetes Resources
         run: |
           # Replace environment variables in Kubernetes manifests
-          for file in k8s/managed-certificate.yaml k8s/ingress.yaml k8s/frontend-config.yaml; do
+          for file in k8s/backend-managed-certificate.yaml k8s/backend-ingress.yaml k8s/frontend-config.yaml; do
             sed -i "s|\${DOMAIN}|${{ env.DOMAIN }}|g" $file
             kubectl apply -f $file
           done
@@ -110,7 +118,7 @@ jobs:
       - name: Wait for Deployment
         run: |
           echo "Waiting for deployment to roll out..."
-          kubectl rollout status deployment/tokencheck-backend -n default --timeout=600s || true
+          kubectl rollout status deployment/tokencheck-backend -n ${{ env.NAMESPACE }} --timeout=600s || true
 
       - name: Get External IP
         run: |
@@ -118,7 +126,7 @@ jobs:
           
           # Try for up to 5 minutes to get the external IP
           for i in {1..30}; do
-            EXTERNAL_IP=$(kubectl get ingress tokencheck-backend-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+            EXTERNAL_IP=$(kubectl get ingress tokencheck-backend-ingress -n ${{ env.NAMESPACE }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
             if [ -n "$EXTERNAL_IP" ]; then
               echo "Ingress external IP is: $EXTERNAL_IP"
               echo "Once DNS is configured, your API will be available at: https://${{ env.DOMAIN }}"
@@ -135,14 +143,14 @@ jobs:
       - name: Check Certificate Status
         run: |
           echo "Certificate provisioning can take 15-60 minutes. Checking initial status..."
-          kubectl describe managedcertificate tokencheck-cert
+          kubectl describe managedcertificate tokencheck-cert -n ${{ env.NAMESPACE }}
 
       - name: Verify Service Endpoints
         run: |
           echo "Deployment complete. Backend services deployed to:"
-          echo "- Internal Kubernetes service: tokencheck-backend.default.svc.cluster.local:8080"
+          echo "- Internal Kubernetes service: tokencheck-backend.${{ env.NAMESPACE }}.svc.cluster.local:8080"
           echo "- External domain (after DNS propagation): https://${{ env.DOMAIN }}"
           
           echo "Checking backend service and pods..."
-          kubectl get service tokencheck-backend -n default
-          kubectl get pods -n default -l app=tokencheck-backend
+          kubectl get service tokencheck-backend -n ${{ env.NAMESPACE }}
+          kubectl get pods -n ${{ env.NAMESPACE }} -l app=tokencheck-backend

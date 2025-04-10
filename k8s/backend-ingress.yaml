@@ -2,9 +2,10 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: tokencheck-backend-ingress
+  namespace: develop
   annotations:
     kubernetes.io/ingress.class: "gce"
-    networking.gke.io/managed-certificates: "tokencheck-cert"
+    networking.gke.io/managed-certificates: "tokencheck-backend-cert"
     networking.gke.io/v1beta1.FrontendConfig: "tokencheck-frontend-config"
 spec:
   rules:

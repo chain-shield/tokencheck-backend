@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: tokencheck-backend
-  namespace: default
+  namespace: develop
 spec:
   replicas: 1
   selector:

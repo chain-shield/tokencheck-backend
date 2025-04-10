@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: tokencheck-backend
-  namespace: default
+  namespace: develop
   labels:
     app: tokencheck-backend
     component: api
