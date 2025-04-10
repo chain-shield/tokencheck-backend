@@ -143,7 +143,7 @@ jobs:
       - name: Check Certificate Status
         run: |
           echo "Certificate provisioning can take 15-60 minutes. Checking initial status..."
-          kubectl describe managedcertificate tokencheck-cert -n ${{ env.NAMESPACE }}
+          kubectl describe managedcertificate tokencheck-backend-cert -n ${{ env.NAMESPACE }}
 
       - name: Verify Service Endpoints
         run: |
