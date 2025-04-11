@@ -1,8 +1,9 @@
 apiVersion: networking.gke.io/v1beta1
 kind: FrontendConfig
 metadata:
-  name: tokencheck-frontend-config
+  name: tokencheck-backend-config
   namespace: develop
 spec:
+  sslPolicy: modern
   redirectToHttps:
-    enabled: true
+    enabled: false

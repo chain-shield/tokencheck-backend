@@ -37,6 +37,25 @@ jobs:
       - name: Configure Docker for GCR
         run: gcloud auth configure-docker --quiet
 
+      - name: Check and create HTTP/HTTPS firewall rules
+        run: |
+          echo "Checking if HTTP/HTTPS firewall rules exist..."
+          
+          # Check if the HTTP/HTTPS rule exists
+          if ! gcloud compute firewall-rules describe allow-http-https &>/dev/null; then
+            echo "Creating allow-http-https firewall rule..."
+            gcloud compute firewall-rules create allow-http-https \
+              --direction=INGRESS \
+              --priority=1000 \
+              --network=default \
+              --action=ALLOW \
+              --rules=tcp:80,tcp:443 \
+              --source-ranges=0.0.0.0/0 \
+              --description="Allow HTTP and HTTPS traffic for web services and certificate validation"
+          else
+            echo "allow-http-https firewall rule already exists."
+          fi
+
       - name: Build and Push Docker Image
         run: |
           docker build -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest .

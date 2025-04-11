@@ -6,7 +6,7 @@ metadata:
   annotations:
     kubernetes.io/ingress.class: "gce"
     networking.gke.io/managed-certificates: "tokencheck-backend-cert"
-    networking.gke.io/v1beta1.FrontendConfig: "tokencheck-frontend-config"
+    networking.gke.io/v1beta1.FrontendConfig: "tokencheck-backend-config"
 spec:
   rules:
   - host: ${DOMAIN}
