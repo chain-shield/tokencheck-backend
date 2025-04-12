@@ -1,4 +1,3 @@
-
 name: Deploy Backend to GKE
 on:
   push:
@@ -12,6 +11,8 @@ env:
   CORS_ALLOWED_ORIGIN: https://tokencheck.ai
   DOMAIN: api.tokencheck.ai
   NAMESPACE: develop
+  REPOSITORY: tokencheck-repo
+  LOCATION: us-east4
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -34,13 +35,17 @@ jobs:
         run: |
           gcloud components install gke-gcloud-auth-plugin --quiet
 
-      - name: Configure Docker for GCR
-        run: gcloud auth configure-docker --quiet
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ env.LOCATION }}-docker.pkg.dev --quiet
 
       - name: Build and Push Docker Image
         run: |
-          docker build -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest .
-          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
+          # Build with the Artifact Registry path
+          docker build -t ${{ env.LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:latest .
+          
+          # Push to Artifact Registry
+          docker push ${{ env.LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:latest
 
       - name: Get GKE Credentials
         run: |
@@ -93,16 +98,24 @@ jobs:
             --dry-run=client -o yaml | kubectl apply -f -
           rm credentials.json
 
-      - name: Create Image Pull Secret
+      - name: Create Artifact Registry Pull Secret
         run: |
-          echo '${{ secrets.GCR_PULL_SA_KEY }}' > gcr-pull-sa-key.json
-          kubectl create secret docker-registry gcr-pull-secret \
+          echo '${{ secrets.GCR_PULL_SA_KEY }}' > gar-pull-sa-key.json
+          kubectl create secret docker-registry gar-pull-secret \
             --namespace ${{ env.NAMESPACE }} \
-            --docker-server=gcr.io \
+            --docker-server=${{ env.LOCATION }}-docker.pkg.dev \
             --docker-username=_json_key \
-            --docker-password="$(cat gcr-pull-sa-key.json)" \
+            --docker-password="$(cat gar-pull-sa-key.json)" \
             --dry-run=client -o yaml | kubectl apply -f -
-          rm gcr-pull-sa-key.json
+          rm gar-pull-sa-key.json
+
+      - name: Update Image Reference in Deployment
+        run: |
+          # Update the image reference in the deployment YAML
+          sed -i "s|gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest|${{ env.LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:latest|g" k8s/tokencheck-backend-deployment.yaml
+          
+          # Update the imagePullSecrets to use the new secret
+          sed -i "s|gcr-pull-secret|gar-pull-secret|g" k8s/tokencheck-backend-deployment.yaml
 
       - name: Deploy Backend Service and Deployment
         run: |
