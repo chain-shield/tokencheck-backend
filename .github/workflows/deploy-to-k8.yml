@@ -95,7 +95,7 @@ jobs:
 
       - name: Create Image Pull Secret
         run: |
-          echo "${{ secrets.GCR_PULL_SA_KEY }}" > gcr-pull-sa-key.json
+          echo '${{ secrets.GCR_PULL_SA_KEY }}' > gcr-pull-sa-key.json
           kubectl create secret docker-registry gcr-pull-secret \
             --namespace ${{ env.NAMESPACE }} \
             --docker-server=gcr.io \
