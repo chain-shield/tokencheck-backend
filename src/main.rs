@@ -124,9 +124,13 @@ async fn main() -> std::io::Result<()> {
     let cookie_secure = !origin.contains("localhost");
     info!("cookie_secure => {}", cookie_secure);
 
+    // split origins into a vector
+    let origins: Vec<String> = origin.split(',').map(|s| s.trim().to_string()).collect();
+    info!("parsed origins: {:?}", origins);
+
     HttpServer::new(move || {
         let secret_key = Key::derive_from(config_clone.jwt_config.secret.as_bytes());
-        let cors = Cors::default()
+        let mut cors = Cors::default()
             .allowed_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS"])
             .allowed_headers(vec![
                 header::AUTHORIZATION,
@@ -135,10 +139,13 @@ async fn main() -> std::io::Result<()> {
                 header::COOKIE,
                 header::SET_COOKIE,
             ])
-            .allowed_origin(&origin)
             .expose_headers(&[header::SET_COOKIE])
             .supports_credentials()
             .max_age(3600);
+
+        for origin in origins.clone() {
+            cors = cors.allowed_origin(&origin);
+        }
 
         let app = App::new()
             .wrap(cors)

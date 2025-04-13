@@ -2,7 +2,7 @@ name: Deploy Backend to GKE
 on:
   push:
     branches:
-      - develop
+      - master
 env:
   PROJECT_ID: keen-oasis-454518-n8
   SERVICE_NAME: tokencheck-backend
