@@ -59,16 +59,22 @@ async fn setup_database(config: &Config) -> Result<PgPool, Box<dyn std::error::E
     let host = url.host_str().unwrap_or("localhost");
     let port = url.port().unwrap_or(5432);
 
+    debug!("creating connection string...");
     // Create a connection string to the postgres database
     let admin_url = format!(
         "postgresql://{}:{}@{}:{}/postgres?sslmode=require",
         username, password, host, port
     );
 
+    let db_ssl_mode = match config.db_ssl_mode.to_lowercase().as_str() {
+        "required" => PgSslMode::Require,
+        "disable" => PgSslMode::Disable,
+        _ => PgSslMode::Require,
+    };
+
     // Connect to the 'postgres' database
-    let admin_options = admin_url
-        .parse::<PgConnectOptions>()?
-        .ssl_mode(PgSslMode::Disable);
+    debug!("conencting to postgres db...");
+    let admin_options = admin_url.parse::<PgConnectOptions>()?.ssl_mode(db_ssl_mode);
     let admin_pool = PgPool::connect_with(admin_options).await?;
 
     // Check if the target database exists
@@ -87,12 +93,6 @@ async fn setup_database(config: &Config) -> Result<PgPool, Box<dyn std::error::E
 
     // Close the admin connection
     admin_pool.close().await;
-
-    let db_ssl_mode = match config.db_ssl_mode.to_lowercase().as_str() {
-        "required" => PgSslMode::Require,
-        "disable" => PgSslMode::Disable,
-        _ => PgSslMode::Require,
-    };
 
     // Connect to the target database
     let options = config
