@@ -91,7 +91,7 @@ async fn setup_database(config: &Config) -> Result<PgPool, Box<dyn std::error::E
     let db_ssl_mode = match config.db_ssl_mode.to_lowercase().as_str() {
         "required" => PgSslMode::Require,
         "disable" => PgSslMode::Disable,
-        _ => PgSslMode::Prefer,
+        _ => PgSslMode::Require,
     };
 
     // Connect to the target database
