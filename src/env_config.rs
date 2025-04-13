@@ -10,6 +10,8 @@ use std::env;
 /// logging preferences, web application authentication callback URL,
 /// and GitHub client configuration.
 pub struct Config {
+    // SSL mode , do we need secure connection to db?
+    pub db_ssl_mode: String,
     // environment
     pub environment: String, // development or production
     /// The URL of the database to connect to.
@@ -127,6 +129,7 @@ impl Config {
         dotenv::dotenv().ok();
 
         Config {
+            db_ssl_mode: env::var("DB_SSL_MODE").expect("DB_SSL_MODE must be set"),
             encryption_key: env::var("ENCRYPTION_KEY").expect("ENCRYPTION_KEY must be set"),
             environment: env::var("ENVIRONMENT").expect("ENVIRONMENT must be set"),
             database_url: env::var("DATABASE_URL").expect("DATABASE_URL must be set"),

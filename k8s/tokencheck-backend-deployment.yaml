@@ -78,6 +78,11 @@ spec:
             secretKeyRef:
               name: tokencheck-secrets
               key: private-key-2
+        - name: DB_SSL_MODE
+          valueFrom:
+            secretKeyRef:
+              name: tokencheck-secrets
+              key: db_ssl_mode
         - name: ETHERSCAN_API_KEY
           valueFrom:
             secretKeyRef:

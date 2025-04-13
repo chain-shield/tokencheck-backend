@@ -45,13 +45,10 @@ use tokencheck_backend::utils::logging::setup_logger;
     )
 )]
 struct _ApiDoc;
-async fn setup_database(
-    database_url: &str,
-    environment: &str,
-) -> Result<PgPool, Box<dyn std::error::Error>> {
+async fn setup_database(config: &Config) -> Result<PgPool, Box<dyn std::error::Error>> {
     // Extract database name using regex or other parsing methods
     // This is a simple example - you might need to adjust based on your URL format
-    let url = url::Url::parse(database_url)?;
+    let url = url::Url::parse(&config.database_url)?;
     let db_name = url.path().trim_start_matches('/');
 
     // Get username and password from the URL
@@ -91,10 +88,17 @@ async fn setup_database(
     // Close the admin connection
     admin_pool.close().await;
 
+    let db_ssl_mode = match config.db_ssl_mode.to_lowercase().as_str() {
+        "required" => PgSslMode::Require,
+        "disable" => PgSslMode::Disable,
+        _ => PgSslMode::Prefer,
+    };
+
     // Connect to the target database
-    let options = database_url
+    let options = config
+        .database_url
         .parse::<PgConnectOptions>()?
-        .ssl_mode(PgSslMode::Disable);
+        .ssl_mode(db_ssl_mode);
     let pool = PgPool::connect_with(options).await?;
 
     Ok(pool)
@@ -111,7 +115,7 @@ async fn main() -> std::io::Result<()> {
         setup_logger().expect("Failed to set up logger");
     }
 
-    let pool = setup_database(&config.database_url, &config.environment)
+    let pool = setup_database(&config)
         .await
         .expect("Failed to set up database");
     let pool = Arc::new(pool);
