@@ -62,15 +62,21 @@ async fn setup_database(config: &Config) -> Result<PgPool, Box<dyn std::error::E
     debug!("creating connection string...");
     // Create a connection string to the postgres database
     let admin_url = format!(
-        "postgresql://{}:{}@{}:{}/postgres?sslmode=require",
+        "postgresql://{}:{}@{}:{}/postgres",
         username, password, host, port
     );
+    debug!("username => {}", username);
+    debug!("password => {}", password);
+    debug!("host => {}", host);
+    debug!("port => {}", port);
+    debug!("admin_url => {}", admin_url);
 
     let db_ssl_mode = match config.db_ssl_mode.to_lowercase().as_str() {
         "required" => PgSslMode::Require,
         "disable" => PgSslMode::Disable,
         _ => PgSslMode::Require,
     };
+    debug!("db ssl mode => {:?}", db_ssl_mode);
 
     // Connect to the 'postgres' database
     debug!("conencting to postgres db...");
@@ -78,6 +84,7 @@ async fn setup_database(config: &Config) -> Result<PgPool, Box<dyn std::error::E
     let admin_pool = PgPool::connect_with(admin_options).await?;
 
     // Check if the target database exists
+    debug!("check db exists..");
     let exists: bool =
         sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname = $1)")
             .bind(db_name)
@@ -85,6 +92,7 @@ async fn setup_database(config: &Config) -> Result<PgPool, Box<dyn std::error::E
             .await?;
 
     // Create the database if it doesn't exist
+    debug!("create db connection..");
     if !exists {
         sqlx::query(&format!("CREATE DATABASE \"{}\"", db_name))
             .execute(&admin_pool)
@@ -92,9 +100,11 @@ async fn setup_database(config: &Config) -> Result<PgPool, Box<dyn std::error::E
     }
 
     // Close the admin connection
+    debug!("close db..");
     admin_pool.close().await;
 
     // Connect to the target database
+    debug!("connect to main db...");
     let options = config
         .database_url
         .parse::<PgConnectOptions>()?
