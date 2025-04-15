@@ -32,10 +32,6 @@ use tokencheck_backend::utils::logging::setup_logger;
         server::routes::auth::auth_provider_callback,
         server::routes::user::me,
         server::routes::log::report,
-        server::routes::sub::get_all_plans,
-        server::routes::sub::get_plan,
-        server::routes::sub::subscribe,
-        server::routes::sub::get_my_plan,
         server::routes::session::get_session
     ),
     info(
@@ -214,6 +210,7 @@ async fn main() -> std::io::Result<()> {
                     .service(
                         web::scope("/auth")
                             .service(server::routes::auth::register)
+                            .service(server::routes::validate_token::validate_token)
                             .service(server::routes::auth::login)
                             .service(server::routes::auth::auth_provider)
                             .service(server::routes::auth::auth_provider_callback),
@@ -223,10 +220,6 @@ async fn main() -> std::io::Result<()> {
                             .wrap(AuthMiddleware::new(config_clone.jwt_config.clone()))
                             .service(server::routes::user::me)
                             .service(server::routes::log::report)
-                            .service(server::routes::sub::get_all_plans)
-                            .service(server::routes::sub::get_plan)
-                            .service(server::routes::sub::subscribe)
-                            .service(server::routes::sub::get_my_plan)
                             .service(server::routes::key::generate_api_key)
                             .service(server::routes::key::get_all_user_api_keys)
                             .service(server::routes::key::delete_user_api_keys),

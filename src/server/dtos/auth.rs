@@ -12,6 +12,11 @@ pub struct RegisterRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct TokenValidationRequest {
+    pub token: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct LoginRequest {
     pub email: String,
     pub password: String,

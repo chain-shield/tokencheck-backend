@@ -12,6 +12,7 @@ pub struct User {
     pub company_name: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    pub stripe_customer_id: Option<String>,
     pub verification_origin: String,
     pub verified: bool,
 }

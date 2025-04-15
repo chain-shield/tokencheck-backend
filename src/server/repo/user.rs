@@ -125,6 +125,7 @@ pub async fn get_user_with_password_hash<'e, E: Executor<'e, Database = Postgres
                 company_name: record.company_name,
                 created_at: record.created_at,
                 updated_at: record.updated_at,
+                stripe_customer_id: record.stripe_customer_id,
                 verification_origin: record.verification_origin,
                 verified: record.verified,
             },

@@ -50,6 +50,11 @@
       },
       {
         "ordinal": 9,
+        "name": "stripe_customer_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 10,
         "name": "password_hash",
         "type_info": "Text"
       }
@@ -69,6 +74,7 @@
       false,
       false,
       false,
+      true,
       false
     ]
   },

@@ -43,7 +43,6 @@ pub mod server {
         pub mod key;
         pub mod log;
         pub mod oauth;
-        pub mod sub;
         pub mod user;
     }
     pub mod middlewares {
@@ -59,12 +58,10 @@ pub mod server {
         pub mod api;
         pub mod auth;
         pub mod log;
-        pub mod sub;
         pub mod user;
     }
     pub mod repo {
         pub mod log;
-        pub mod sub;
         pub mod user;
     }
     pub mod routes {
@@ -73,14 +70,13 @@ pub mod server {
         pub mod key;
         pub mod log;
         pub mod session;
-        pub mod sub;
         pub mod user;
+        pub mod validate_token;
     }
     pub mod services {
         pub mod auth;
         pub mod key;
         pub mod log;
-        pub mod sub;
         pub mod user;
     }
 }
