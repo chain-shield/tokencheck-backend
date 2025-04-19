@@ -6,7 +6,10 @@ use crate::{
             error::{AppError, Res},
             oauth::OAuthProvider,
         },
-        models::user::User,
+        models::{
+            auth::{ClaimsSpec, JwtClaims},
+            user::User,
+        },
         repo,
     },
 };
@@ -15,41 +18,27 @@ use argon2::{
     Argon2,
 };
 use chrono::{Duration, Utc};
-use jsonwebtoken::{decode, DecodingKey, Validation};
-use jsonwebtoken::{encode, EncodingKey, Header};
+use jsonwebtoken::{DecodingKey, Validation};
+use jsonwebtoken::{EncodingKey, Header};
 use log::warn;
 use oauth2::basic::*;
 use oauth2::*;
 use sqlx::PgPool;
-use uuid::Uuid;
 
-use crate::server::models::auth::Claims;
-
-/// Generates a JWT token for the given user ID
-///
-/// # Arguments
-/// * `user_id` - The user's UUID as a string
-/// * `config` - JWT configuration containing secret and expiration settings
-///
-/// # Returns
-/// A Result containing the JWT token string or an error
-pub fn generate_jwt(user_id: &str, config: &JwtConfig) -> Res<String> {
+/// Generates JWT token based on user object and JWT configuration options
+pub fn generate_jwt(spec: ClaimsSpec, config: &JwtConfig) -> Res<String> {
     let expiration = Utc::now()
         .checked_add_signed(Duration::hours(config.expiration_hours))
-        .ok_or_else(|| AppError::Internal("Failed to calculate token expiration".to_string()))?
-        .timestamp();
+        .expect("valid timestamp")
+        .timestamp() as u32;
 
-    let user_uuid = Uuid::parse_str(user_id)
-        .map_err(|_| AppError::BadRequest("Invalid user ID format".to_string()))?;
-
-    let claims = Claims {
-        user_id: user_uuid,
-        exp: expiration as usize,
-        plan_id: Uuid::nil(),
-        sub_status: "none".to_owned(),
+    let claims = JwtClaims {
+        user_id: spec.user_id,
+        stripe_customer_id: spec.stripe_customer_id,
+        exp: expiration,
     };
 
-    encode(
+    jsonwebtoken::encode(
         &Header::default(),
         &claims,
         &EncodingKey::from_secret(config.secret.as_bytes()),
@@ -57,26 +46,15 @@ pub fn generate_jwt(user_id: &str, config: &JwtConfig) -> Res<String> {
     .map_err(AppError::from)
 }
 
-/// Validates a JWT token and extracts the claims
-///
-/// # Arguments
-/// * `token` - The JWT token string to validate
-/// * `secret` - The secret key used to sign the token
-///
-/// # Returns
-/// A Result containing the validated Claims or an error
-pub fn validate_jwt(token: &str, secret: &str) -> Res<Claims> {
-    match decode::<Claims>(
+/// Extracts claims object from JWT token.
+/// Requires JWT secret.
+pub fn validate_jwt(token: &str, secret: &str) -> Res<JwtClaims> {
+    let token_data = jsonwebtoken::decode::<JwtClaims>(
         token,
         &DecodingKey::from_secret(secret.as_bytes()),
         &Validation::default(),
-    ) {
-        Ok(token_data) => Ok(token_data.claims),
-        Err(e) => {
-            warn!("Invalid token: {}", e);
-            Err(AppError::Unauthorized("Invalid token".to_string()))
-        }
-    }
+    )?;
+    Ok(token_data.claims)
 }
 
 /// Creates an OAuth client for the specified provider

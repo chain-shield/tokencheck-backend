@@ -1,7 +1,8 @@
 use crate::{
     env_config::Config,
     server::{
-        dtos::auth::TokenValidationRequest, misc::response::Success, models::auth::Claims, services,
+        dtos::auth::TokenValidationRequest, misc::response::Success, models::auth::JwtClaims,
+        services,
     },
 };
 use actix_web::{post, web, Responder};
@@ -22,7 +23,7 @@ use std::sync::Arc;
     description = "validate jwt token for other micro services that need to make sure incoming calls are authenticated",
     request_body = TokenValidationRequest,
     responses(
-        (status = 200, description = "Call successfully validated", body = Claims),
+        (status = 200, description = "Call successfully validated", body = JwtClaims),
         (status = 401, description = "Unauthorized"),
     )
 )]

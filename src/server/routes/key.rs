@@ -6,7 +6,7 @@ use uuid::Uuid;
 use crate::server::{
     dtos::key::{ApiKeyDto, CreateApiKeyRequest, CreateApiKeyResponse},
     misc::error::Res,
-    models::auth::Claims,
+    models::auth::JwtClaims,
     services::key::{
         create_api_key_and_save_to_db, delete_user_api_key_from_db, get_user_api_keys_from_db,
     },
@@ -29,7 +29,7 @@ use crate::server::{
 )]
 #[get("/key/get-all")]
 pub async fn get_all_user_api_keys(
-    claims: web::ReqData<Claims>,
+    claims: web::ReqData<JwtClaims>,
     pool: web::Data<Arc<PgPool>>,
 ) -> Res<impl Responder> {
     let user_id = claims.user_id;
@@ -59,7 +59,7 @@ pub async fn get_all_user_api_keys(
 #[post("/key/generate")]
 pub async fn generate_api_key(
     create_api_key_request: web::Json<CreateApiKeyRequest>,
-    claims: web::ReqData<Claims>,
+    claims: web::ReqData<JwtClaims>,
     pool: web::Data<Arc<PgPool>>,
 ) -> Res<impl Responder> {
     let user_id = claims.user_id;
@@ -95,7 +95,7 @@ pub async fn generate_api_key(
 #[delete("/key/delete/{id}")]
 pub async fn delete_user_api_keys(
     path: web::Path<String>,
-    claims: web::ReqData<Claims>,
+    claims: web::ReqData<JwtClaims>,
     pool: web::Data<Arc<PgPool>>,
 ) -> Res<impl Responder> {
     let user_id = claims.user_id;

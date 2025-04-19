@@ -5,7 +5,7 @@ use sqlx::PgPool;
 
 use crate::server::{
     misc::response::Success,
-    models::{auth::Claims, user::User},
+    models::{auth::JwtClaims, user::User},
     services,
 };
 
@@ -24,7 +24,7 @@ use crate::server::{
     )
 )]
 #[get("/me")]
-async fn me(claims: web::ReqData<Claims>, pool: web::Data<Arc<sqlx::PgPool>>) -> impl Responder {
+async fn me(claims: web::ReqData<JwtClaims>, pool: web::Data<Arc<sqlx::PgPool>>) -> impl Responder {
     let user_id = claims.user_id;
     let pg_pool: &PgPool = &**pool;
     let user = services::user::get_user_by_id(pg_pool, user_id).await?;

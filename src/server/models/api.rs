@@ -13,7 +13,6 @@ pub struct ApiKey {
     pub name: String,
     pub status: String,
     pub created_at: NaiveDateTime,
-    pub last_used: Option<NaiveDateTime>,
     pub permissions: JsonValue,
 }
 

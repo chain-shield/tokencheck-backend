@@ -47,6 +47,7 @@ pub mod server {
     }
     pub mod middlewares {
         pub mod auth;
+        pub mod validate_api_key;
     }
     pub mod misc {
         pub mod error;
@@ -77,6 +78,7 @@ pub mod server {
         pub mod auth;
         pub mod key;
         pub mod log;
+        pub mod subscription_client;
         pub mod user;
     }
 }

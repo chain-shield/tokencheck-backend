@@ -49,14 +49,15 @@ pub async fn insert_user<'e, E: Executor<'e, Database = Postgres>>(
     sqlx::query_as!(
         User,
         r#"
-        INSERT INTO users (email, first_name, last_name, company_name, verification_origin, verified)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO users (email, first_name, last_name, company_name, stripe_customer_id, verification_origin, verified)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *
         "#,
         data.email,
         data.first_name,
         data.last_name,
         data.company_name,
+        data.stripe_customer_id,
         data.verification_origin.to_string(),
         verified
     )

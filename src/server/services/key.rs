@@ -62,7 +62,7 @@ pub async fn get_user_api_keys_from_db(pool: &PgPool, user_id: &Uuid) -> Res<imp
     let encryption = EncryptionService::new()?;
     let keys = sqlx::query!(
         r#"
-            SELECT id, key_encrypted, name, status, created_at, last_used, permissions
+            SELECT id, key_encrypted, name, status, created_at, permissions
             FROM api_keys
             WHERE user_id = $1
             "#,
@@ -121,11 +121,11 @@ pub async fn create_api_key_and_save_to_db(
     });
 
     let new_key = sqlx::query_as!(
-    ApiKey,
+        ApiKey,
     r#"
         INSERT INTO api_keys (user_id, key_encrypted, name, permissions)
         VALUES ($1, $2, $3, $4)
-        RETURNING id, user_id, key_encrypted as "encrypted_key!", name, status, created_at, last_used, permissions
+        RETURNING id, user_id, key_encrypted as "encrypted_key!", name, status, created_at,  permissions
         "#,
     user_id,
     key_encrypted,

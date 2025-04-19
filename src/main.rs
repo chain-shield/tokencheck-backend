@@ -18,6 +18,7 @@ use std::sync::Arc;
 use tokencheck_backend::env_config::Config;
 use tokencheck_backend::server;
 use tokencheck_backend::server::middlewares::auth::AuthMiddleware;
+use tokencheck_backend::server::middlewares::validate_api_key::ValidateApiKeyMiddleware;
 use utoipa::OpenApi;
 
 use dotenv::dotenv;
@@ -112,10 +113,9 @@ async fn setup_database(config: &Config) -> Result<PgPool, Box<dyn std::error::E
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    dotenv().ok();
     let config = Arc::new(Config::from_env());
     let config_clone = config.clone();
-
-    dotenv().ok();
 
     if config_clone.console_logging_enabled {
         setup_logger().expect("Failed to set up logger");
@@ -210,10 +210,16 @@ async fn main() -> std::io::Result<()> {
                     .service(
                         web::scope("/auth")
                             .service(server::routes::auth::register)
-                            .service(server::routes::validate_token::validate_token)
                             .service(server::routes::auth::login)
                             .service(server::routes::auth::auth_provider)
                             .service(server::routes::auth::auth_provider_callback),
+                    )
+                    .service(
+                        web::scope("/validate")
+                            .wrap(ValidateApiKeyMiddleware::new(
+                                config_clone.auth_service_api_keys.clone(),
+                            ))
+                            .service(server::routes::validate_token::validate_token),
                     )
                     .service(
                         web::scope("/secured")

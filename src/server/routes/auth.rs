@@ -16,7 +16,7 @@ use crate::{
             oauth::OAuthProvider,
             response::Success,
         },
-        models::user::User,
+        models::{auth::ClaimsSpec, user::User},
         services,
     },
 };
@@ -46,24 +46,50 @@ use crate::{
 async fn register(
     req: web::Json<RegisterRequest>,
     pool: web::Data<Arc<sqlx::PgPool>>,
+    config: web::Data<Arc<Config>>,
 ) -> impl Responder {
     let pg_pool: &PgPool = &**pool;
     let username_exists = services::user::exists_user_by_email(pg_pool, req.email.clone()).await?;
     if username_exists {
         return Err(AppError::BadRequest("Username already exists".to_string()));
     }
-    let user = services::user::create_user_with_credentials(pg_pool, &req.into_inner()).await?;
+    let user =
+        services::user::create_user_with_credentials(pg_pool, &req.into_inner(), &config).await?;
     Ok(Success::created(user))
 }
 
-/// Authenticates a user with email and password credentials.
+/// Authenticates a user with email and password.
 ///
-/// This endpoint validates the provided credentials and, if successful,
-/// generates a JWT token for the authenticated user.
+/// # Input
+/// - `login_data`: JSON payload containing email and password
+/// - `config`: Application configuration for JWT generation
+/// - `pool`: Database connection pool
 ///
-/// # Errors
-/// - Returns a 401 error if credentials are invalid
-/// - Returns a 500 error if authentication fails for other reasons
+/// # Output
+/// - Success: Returns an auth response with JWT token and user details
+/// - Error: Returns 401 Unauthorized for invalid credentials
+///
+/// # Frontend Example
+/// ```javascript
+/// // Using fetch API
+/// const response = await fetch('/api/auth/login', {
+///   method: 'POST',
+///   headers: {
+///     'Content-Type': 'application/json'
+///   },
+///   body: JSON.stringify({
+///     email: 'user@example.com',
+///     password: 'securepassword'
+///   })
+/// });
+///
+/// if (response.ok) {
+///   const authData = await response.json();
+///   // Store token for authenticated requests
+///   localStorage.setItem('authToken', authData.token);
+///   console.log('Logged in user:', authData.user);
+/// }
+/// ```
 #[utoipa::path(
     post,
     path = "/api/auth/login",
@@ -82,10 +108,19 @@ pub async fn login(
     login_data: web::Json<LoginRequest>,
     config: web::Data<Arc<Config>>,
     pool: web::Data<Arc<PgPool>>,
-) -> Result<impl Responder, crate::server::misc::error::AppError> {
+) -> Res<impl Responder> {
     let pg_pool: &PgPool = &**pool;
     let user = services::auth::authenticate_user(pg_pool, &login_data.into_inner()).await?;
-    let token = services::auth::generate_jwt(&user.id.to_string(), &config.jwt_config)?;
+    let token = services::auth::generate_jwt(
+        ClaimsSpec {
+            user_id: user.id.clone(),
+            stripe_customer_id: user
+                .stripe_customer_id
+                .clone()
+                .expect("Stripe customer Id not found"),
+        },
+        &config.jwt_config,
+    )?;
     Success::ok(AuthResponse { token, user })
 }
 
@@ -201,14 +236,31 @@ async fn auth_provider_callback(
     log::info!("User exists check: {}", existing_user);
 
     let auth_response = if existing_user {
-        log::info!("Authenticating existing user");
         let user = services::user::get_user_by_email(pg_pool, user_data.email).await?;
-        let token = services::auth::generate_jwt(&user.id.to_string(), &config.jwt_config)?;
+        let token = services::auth::generate_jwt(
+            ClaimsSpec {
+                user_id: user.id.clone(),
+                stripe_customer_id: user
+                    .stripe_customer_id
+                    .clone()
+                    .expect("Stripe customer id not found"),
+            },
+            &config.jwt_config,
+        )?;
         AuthResponse { token, user }
     } else {
-        log::info!("Creating new user with OAuth data");
-        let user = services::user::create_user_with_oauth(pg_pool, &user_data, &provider).await?;
-        let token = services::auth::generate_jwt(&user.id.to_string(), &config.jwt_config)?;
+        let user =
+            services::user::create_user_with_oauth(pg_pool, &user_data, &provider, &config).await?;
+        let token = services::auth::generate_jwt(
+            ClaimsSpec {
+                user_id: user.id.clone(),
+                stripe_customer_id: user
+                    .stripe_customer_id
+                    .clone()
+                    .expect("Stripe customer id not found"),
+            },
+            &config.jwt_config,
+        )?;
         AuthResponse { token, user }
     };
 

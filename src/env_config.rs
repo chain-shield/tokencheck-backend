@@ -10,6 +10,13 @@ use std::env;
 /// logging preferences, web application authentication callback URL,
 /// and GitHub client configuration.
 pub struct Config {
+    // server to server api keys, other micro services MUST
+    // use one of these keys to make call to this service
+    pub auth_service_api_keys: Vec<String>,
+    // url to reach subscription service
+    pub subs_service_url: String,
+    // api key REQUIRED to make validate token call to auth service
+    pub subs_api_key: String,
     // SSL mode , do we need secure connection to db?
     pub db_ssl_mode: String,
     // environment
@@ -129,6 +136,13 @@ impl Config {
         dotenv::dotenv().ok();
 
         Config {
+            auth_service_api_keys: env::var("AUTH_SERVICE_API_KEYS")
+                .unwrap_or_default()
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .collect(),
+            subs_api_key: env::var("SUBS_API_KEY").expect("SUBS_API_KEY must be set"),
+            subs_service_url: env::var("SUBS_SERVICE_URL").expect("SUBS_SERVICE_URL must be set"),
             db_ssl_mode: env::var("DB_SSL_MODE").expect("DB_SSL_MODE must be set"),
             encryption_key: env::var("ENCRYPTION_KEY").expect("ENCRYPTION_KEY must be set"),
             environment: env::var("ENVIRONMENT").expect("ENVIRONMENT must be set"),
