@@ -17,7 +17,7 @@ use std::sync::Arc;
 /// - Returns a 401 error if token is not valid - Unauthorized
 #[utoipa::path(
     post,
-    path = "/api/auth/validate-token",
+    path = "/api/validate/validate-token",
     tag = "Token Validation",
     summary = "validate jwt token",
     description = "validate jwt token for other micro services that need to make sure incoming calls are authenticated",
