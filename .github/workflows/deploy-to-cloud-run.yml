@@ -70,6 +70,7 @@ jobs:
             --set-env-vars "ENABLE_CONSOLE_LOGGING=true" \
             --set-env-vars "ENVIRONMENT=${{ env.ENVIRONMENT }}" \
             --set-env-vars "DB_SSL_MODE=${{ env.DB_SSL_MODE }}" \
+            --set-env-vars "SUBS_SERVICE_URL=${{ secrets.SUBS_SERVICE_URL }}" \
             --set-env-vars "AUTH_SERVICE_API_KEYS=${{ secrets.AUTH_SERVICE_API_KEYS }}" \
             --set-env-vars "SUBS_API_KEY=${{ secrets.SUBS_API_KEY }}" \
             --set-env-vars "ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}" \
