@@ -13,6 +13,7 @@ env:
   REGION: us-east4
   ENVIRONMENT: production
   CORS_ALLOWED_ORIGIN: https://tokencheck.ai 
+  SUBS_SERVICE_URL: https://subs.tokencheck.ai
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -69,6 +70,8 @@ jobs:
             --set-env-vars "ENABLE_CONSOLE_LOGGING=true" \
             --set-env-vars "ENVIRONMENT=${{ env.ENVIRONMENT }}" \
             --set-env-vars "DB_SSL_MODE=${{ env.DB_SSL_MODE }}" \
+            --set-env-vars "AUTH_SERVICE_API_KEYS=${{ secrets.AUTH_SERVICE_API_KEYS }}" \
+            --set-env-vars "SUBS_API_KEY=${{ secrets.SUBS_API_KEY }}" \
             --set-env-vars "ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}" \
             --set-env-vars "WALLET_ADDRESS=${{ secrets.WALLET_ADDRESS }}" \
             --set-env-vars "PRIVATE_KEY=${{ secrets.PRIVATE_KEY }}" \
