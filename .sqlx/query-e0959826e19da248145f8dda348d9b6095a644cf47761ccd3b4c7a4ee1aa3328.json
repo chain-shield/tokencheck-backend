@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, key_encrypted, name, status, created_at, last_used, permissions\n            FROM api_keys\n            WHERE user_id = $1\n            ",
+  "query": "\n        INSERT INTO api_keys (user_id, key_encrypted, name, permissions)\n        VALUES ($1, $2, $3, $4)\n        RETURNING id, user_id, key_encrypted as \"encrypted_key!\", name, status, created_at,  permissions\n        ",
   "describe": {
     "columns": [
       {
@@ -10,27 +10,27 @@
       },
       {
         "ordinal": 1,
-        "name": "key_encrypted",
-        "type_info": "Text"
+        "name": "user_id",
+        "type_info": "Uuid"
       },
       {
         "ordinal": 2,
+        "name": "encrypted_key!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
         "name": "name",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 3,
+        "ordinal": 4,
         "name": "status",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 4,
-        "name": "created_at",
-        "type_info": "Timestamp"
-      },
-      {
         "ordinal": 5,
-        "name": "last_used",
+        "name": "created_at",
         "type_info": "Timestamp"
       },
       {
@@ -41,7 +41,10 @@
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Uuid",
+        "Text",
+        "Varchar",
+        "Jsonb"
       ]
     },
     "nullable": [
@@ -50,9 +53,9 @@
       false,
       false,
       false,
-      true,
+      false,
       false
     ]
   },
-  "hash": "90df7aa5e075ee160fd73b124f97c15b7bfd94ac4821c5c7706e4574ef3b762e"
+  "hash": "e0959826e19da248145f8dda348d9b6095a644cf47761ccd3b4c7a4ee1aa3328"
 }
