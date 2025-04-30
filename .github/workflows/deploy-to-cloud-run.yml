@@ -13,7 +13,7 @@ env:
   REGION: us-east4
   ENVIRONMENT: production
   CORS_ALLOWED_ORIGIN: https://tokencheck.ai 
-  SUBS_SERVICE_URL: https://subs.tokencheck.ai
+  SUBS_SERVICE_URL: https://subs.tokencheck.ai/api
   DB_SSL_MODE: enabled
 jobs:
   build-and-deploy:
