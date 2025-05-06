@@ -32,6 +32,7 @@ use tokencheck_backend::utils::logging::setup_logger;
         server::routes::auth::auth_provider,
         server::routes::auth::auth_provider_callback,
         server::routes::user::me,
+		server::routes::user::update_password,
         server::routes::log::report,
         server::routes::session::get_session
     ),
@@ -225,6 +226,7 @@ async fn main() -> std::io::Result<()> {
                         web::scope("/secured")
                             .wrap(AuthMiddleware::new(config_clone.jwt_config.clone()))
                             .service(server::routes::user::me)
+							.service(server::routes::user::update_password)
                             .service(server::routes::log::report)
                             .service(server::routes::key::generate_api_key)
                             .service(server::routes::key::get_all_user_api_keys)
