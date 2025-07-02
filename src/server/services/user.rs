@@ -27,11 +27,15 @@ pub async fn get_user_by_id(pool: &PgPool, user_id: Uuid) -> Res<User> {
     repo::user::get_user_by_id(pool, user_id).await
 }
 
-pub async fn update_user_password_with_verification(pool: &PgPool, user_id: Uuid, old_password: String, new_password: String) -> Res<bool> {
-    repo::user::update_user_password_with_verification(pool, user_id, old_password, new_password).await
+pub async fn update_user_password_with_verification(
+    pool: &PgPool,
+    user_id: Uuid,
+    old_password: String,
+    new_password: String,
+) -> Res<bool> {
+    repo::user::update_user_password_with_verification(pool, user_id, old_password, new_password)
+        .await
 }
-
-
 
 /// Inserts user record and OAuth data to the database.
 /// Used when signing in using OAuth provider.

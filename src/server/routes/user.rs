@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
-use actix_web::{get, web, Responder};
+use actix_web::{get, post, web, Responder};
+use serde::Deserialize;
 use sqlx::PgPool;
+use utoipa::ToSchema;
 
 use crate::server::{
     misc::response::Success,
@@ -31,7 +33,7 @@ async fn me(claims: web::ReqData<JwtClaims>, pool: web::Data<Arc<sqlx::PgPool>>)
     Success::ok(user)
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct UpdatePasswordRequest {
     old_password: String,
     new_password: String,
@@ -74,3 +76,4 @@ async fn update_password(
     .await?;
     Success::ok(updated)
 }
+
