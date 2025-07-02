@@ -138,3 +138,57 @@ pub async fn get_user_with_password_hash<'e, E: Executor<'e, Database = Postgres
     })
     .map_err(AppError::from)
 }
+
+
+//check if a new password is different than the previous one and if update is successful
+pub async fn update_user_password_with_verification<'e, E: Executor<'e, Database = Postgres>>(
+    executor: E,
+    user_id: Uuid,
+    old_password: String,
+    new_password: String,
+) -> Res<bool> {
+    // Fetch current password hash
+    let credentials = sqlx::query!(
+        "SELECT password_hash FROM auth_credentials WHERE user_id = $1",
+        user_id
+    )
+    .fetch_optional(executor)
+    .await
+    .map_err(AppError::from)?
+    .ok_or_else(|| AppError::from("No credentials found for user"))?;
+
+    // Verify old password
+    let is_valid = bcrypt::verify(&old_password, &credentials.password_hash)
+        .map_err(|e| AppError::from(e))?;
+    if !is_valid {
+        return Err(AppError::from("Invalid old password"));
+    }
+
+    // Check if new password is different by verifying it against the current hash
+    let is_same_password = bcrypt::verify(&new_password, &credentials.password_hash)
+        .map_err(|e| AppError::from(e))?;
+    if is_same_password {
+        return Ok(false); // New password is the same as the old one
+    }
+
+    // Hash new password
+    let new_password_hash = bcrypt::hash(&new_password, bcrypt::DEFAULT_COST)
+        .map_err(|e| AppError::from(e))?;
+
+    // Update password hash
+    let result = sqlx::query!(
+        r#"
+        UPDATE auth_credentials
+        SET password_hash = $1
+        WHERE user_id = $2
+        "#,
+        new_password_hash,
+        user_id
+    )
+    .execute(executor)
+    .await
+    .map_err(AppError::from)?;
+
+    // Return true if the update affected a row, false otherwise
+    Ok(result.rows_affected() > 0)
+}
