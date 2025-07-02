@@ -12,7 +12,7 @@ env:
   SERVICE_NAME: tokencheck-backend
   REGION: us-east4
   ENVIRONMENT: production
-  CORS_ALLOWED_ORIGIN: https://tokencheck.ai 
+  CORS_ALLOWED_ORIGIN: https://chainshield.ai 
   SUBS_SERVICE_URL: https://subs.tokencheck.ai/api
   DB_SSL_MODE: enabled
 jobs:
